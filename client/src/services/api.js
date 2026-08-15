@@ -22,4 +22,14 @@ api.interceptors.request.use((config) => {
 // Response interceptor - handle 401
 api.interceptors.response.use(
   (response) => response,
-  (error
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('lims_token');
+      localStorage.removeItem('lims_user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;

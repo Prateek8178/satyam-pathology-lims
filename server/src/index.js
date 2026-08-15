@@ -91,4 +91,18 @@ const startServer = async () => {
     console.log(`🚀 LIMS Server running on http://localhost:${PORT}`);
     console.log(`📋 Environment: ${process.env.NODE_ENV}`);
     try {
-      const LISManager = require('./in
+      const LISManager = require('./integrations/lis/LISManager');
+      LISManager.start();
+      console.log('🔬 LIS Manager started');
+    } catch (err) {
+      console.warn('⚠️ LIS Manager failed to start:', err.message);
+    }
+  });
+};
+
+startServer().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
+
+module.exports = app;

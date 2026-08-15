@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: satyam-pathology-backend
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/index.js
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false          # Set this manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false          # Set this manually in Render dashboard
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: FRONTEND_URL
+        sync: false          # Set to your Vercel URL after deploy
+      - key: LIS_ADAPTER_TYPE
+        value: mock
+      - key: LIS_POLLING_INTERVAL
+        value: 30000
