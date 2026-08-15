@@ -1,0 +1,11 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const ctrl = require('../controllers/orderController');
+router.use(verifyToken);
+router.get('/', ctrl.getAll);
+router.post('/', ctrl.create);
+router.get('/:id', ctrl.getById);
+router.put('/:id/status', ctrl.updateStatus);
+router.put('/:id/cancel', ctrl.cancel);
+module.exports = router;

@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken } = require('../middleware/auth');
+const ctrl = require('../controllers/lisController');
+router.post('/results', ctrl.receiveResult);
+router.get('/status', verifyToken, ctrl.getStatus);
+router.get('/inbox', verifyToken, ctrl.getInbox);
+router.get('/unmatched', verifyToken, ctrl.getUnmatched);
+router.get('/analyzers', verifyToken, ctrl.getAnalyzers);
+router.post('/match/:id', verifyToken, ctrl.matchManually);
+router.post('/mock/inject', verifyToken, ctrl.injectMock);
+module.exports = router;

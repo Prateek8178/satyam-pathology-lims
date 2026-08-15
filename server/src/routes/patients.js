@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const { getAll, search, create, getById, update, getHistory, deletePatient } = require('../controllers/patientController');
+router.use(verifyToken);
+router.get('/search', search);
+router.get('/', getAll);
+router.post('/', create);
+router.get('/:id', getById);
+router.put('/:id', update);
+router.delete('/:id', deletePatient);
+router.get('/:id/history', getHistory);
+module.exports = router;

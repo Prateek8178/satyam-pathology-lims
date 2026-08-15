@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background-color: #F1F5F9; color: #1F2937; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #F1F5F9; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+}
+
+@layer components {
+  .sidebar-link { @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 cursor-pointer text-sm font-medium; }
+  .sidebar-link.active { @apply bg-primary-800 text-white; }
+  .sidebar-section { @apply px-3 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4 mb-1; }
+  .card { @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6; }
+  .card-sm { @apply bg-white rounded-xl shadow-sm border border-slate-200 p-4; }
+  .btn-primary { @apply inline-flex items-center gap-2 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-secondary { @apply inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors; }
+  .btn-danger { @apply inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors; }
+  .btn-success { @apply inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .input-field { @apply w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white placeholder-slate-400; }
+  .select-field { @apply w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white; }
+  .label { @apply block text-sm font-medium text-slate-700 mb-1; }
+  .page-title { @apply text-2xl font-bold text-slate-900; }
+  .page-subtitle { @apply text-sm text-slate-500 mt-0.5; }
+  .table-th { @apply px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider; }
+  .table-td { @apply px-4 py-3 text-sm text-slate-700; }
+  .table-tr { @apply hover:bg-slate-50 border-b border-slate-100 transition-colors; }
+  .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+  .stat-card { @apply bg-white rounded-xl border border-slate-200 p-5 shadow-sm; }
+}

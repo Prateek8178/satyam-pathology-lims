@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const ctrl = require('../controllers/inventoryController');
+router.use(verifyToken);
+router.get('/', ctrl.getAll);
+router.post('/', authorize('SUPER_ADMIN'), ctrl.create);
+router.get('/:id', ctrl.getById);
+router.put('/:id', authorize('SUPER_ADMIN'), ctrl.update);
+router.post('/:id/stock-in', authorize('SUPER_ADMIN'), ctrl.stockIn);
+router.post('/:id/stock-out', ctrl.stockOut);
+router.get('/:id/transactions', ctrl.getTransactions);
+module.exports = router;

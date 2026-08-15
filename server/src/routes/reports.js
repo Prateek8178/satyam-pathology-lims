@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const ctrl = require('../controllers/reportController');
+router.use(verifyToken);
+router.get('/search', ctrl.search);
+router.get('/by-patient/:patientId', ctrl.getByPatient);
+router.post('/generate', ctrl.generate);
+router.get('/', ctrl.getAll);
+router.get('/:id', ctrl.getById);
+router.get('/:id/pdf', ctrl.getPDF);
+router.post('/:id/regenerate', ctrl.regenerate);
+module.exports = router;

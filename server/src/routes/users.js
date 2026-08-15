@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const ctrl = require('../controllers/userController');
+router.use(verifyToken);
+router.get('/', authorize('SUPER_ADMIN'), ctrl.getAll);
+router.post('/', authorize('SUPER_ADMIN'), ctrl.create);
+router.get('/:id', authorize('SUPER_ADMIN'), ctrl.getById);
+router.put('/:id', authorize('SUPER_ADMIN'), ctrl.update);
+router.delete('/:id', authorize('SUPER_ADMIN'), ctrl.deactivate);
+router.put('/:id/reset-password', authorize('SUPER_ADMIN'), ctrl.resetPassword);
+module.exports = router;

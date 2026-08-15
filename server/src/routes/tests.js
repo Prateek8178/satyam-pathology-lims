@@ -1,0 +1,15 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const ctrl = require('../controllers/testController');
+router.use(verifyToken);
+router.get('/categories', ctrl.getCategories);
+router.get('/:id/parameters', ctrl.getParameters);
+router.get('/', ctrl.getAll);
+router.post('/', authorize('SUPER_ADMIN'), ctrl.create);
+router.get('/:id', ctrl.getById);
+router.put('/:id', authorize('SUPER_ADMIN'), ctrl.update);
+router.post('/:id/parameters', authorize('SUPER_ADMIN'), ctrl.addParameter);
+router.put('/:id/parameters/:paramId', authorize('SUPER_ADMIN'), ctrl.updateParameter);
+router.delete('/:id/parameters/:paramId', authorize('SUPER_ADMIN'), ctrl.deleteParameter);
+module.exports = router;

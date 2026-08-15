@@ -1,0 +1,10 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken } = require('../middleware/auth');
+const ctrl = require('../controllers/homeCollectionController');
+router.use(verifyToken);
+router.get('/', ctrl.getAll);
+router.post('/', ctrl.create);
+router.get('/:id', ctrl.getById);
+router.put('/:id', ctrl.update);
+module.exports = router;

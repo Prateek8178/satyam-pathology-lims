@@ -1,0 +1,17 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, authorize } = require('../middleware/auth');
+const ctrl = require('../controllers/resultController');
+router.use(verifyToken);
+router.get('/', ctrl.getAll);
+router.get('/by-order/:orderId', ctrl.getByOrder);
+router.get('/by-patient/:patientId', ctrl.getByPatient);
+router.post('/', ctrl.enterManual);
+router.post('/manual', ctrl.enterManual);
+router.get('/:id', ctrl.getById);
+router.put('/:id', ctrl.update);
+router.put('/:id/technician-review', ctrl.update);
+router.put('/:id/send-for-verification', ctrl.sendForVerification);
+router.put('/:id/verify', ctrl.verify);
+router.put('/:id/reject', ctrl.reject);
+module.exports = router;
