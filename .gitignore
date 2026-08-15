@@ -1,0 +1,9 @@
+node_modules/
+.env
+dist/
+.DS_Store
+uploads/clinic/logo.png
+uploads/clinic/signature.png
+uploads/pdfs/
+*.log
+.env.local
