@@ -10,6 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', 1); // Required for Render/Heroku — fixes rate limiter behind proxy
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
@@ -35,6 +36,7 @@ app.use(cors({
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.get('/api/health', (req, res) => res.json({ success: true, message: 'LIMS API is running', timestamp: new Date() }));
