@@ -49,7 +49,17 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.get('/api/health', (req, res) => res.json({ success: true, message: 'LIMS API is running', timestamp: new Date() }));
+app.get('/api/health', (req, res) => {
+  const mongoose = require('mongoose');
+  const dbState = ['disconnected','connected','connecting','disconnecting'];
+  res.json({
+    success: true,
+    message: 'LIMS API is running',
+    timestamp: new Date(),
+    db: dbState[mongoose.connection.readyState] || 'unknown',
+    env: process.env.NODE_ENV
+  });
+});
 
 // Mount empty routers for now to prevent startup crash if subagents are not done
 const dummyRouter = express.Router();
