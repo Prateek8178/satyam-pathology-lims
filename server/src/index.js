@@ -8,6 +8,16 @@ const fs = require('fs');
 const connectDB = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
 
+// ── Global safety net (Node.js 24 exits on unhandled rejections by default) ──
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️  Unhandled Promise Rejection:', reason?.message || reason);
+  // Do NOT exit — keep server running
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️  Uncaught Exception:', err.message);
+  // Do NOT exit — keep server running
+});
+
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1); // Required for Render/Heroku — fixes rate limiter behind proxy
