@@ -83,13 +83,17 @@ app.use('/api/clinic', require('./routes/clinic'));
 
 app.use(errorHandler);
 
+
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  await connectDB();
-  app.listen(PORT, () => {
-    console.log(`🚀 LIMS Server running on http://localhost:${PORT}`);
-    console.log(`📋 Environment: ${process.env.NODE_ENV}`);
+// ── Start server FIRST (so Render health check passes immediately) ──
+app.listen(PORT, () => {
+  console.log(`🚀 LIMS Server running on http://localhost:${PORT}`);
+  console.log(`📋 Environment: ${process.env.NODE_ENV}`);
+
+  // Connect to MongoDB after server is listening
+  connectDB().then(() => {
+    console.log('📦 Database connected and ready');
     try {
       const LISManager = require('./integrations/lis/LISManager');
       LISManager.start();
@@ -97,12 +101,11 @@ const startServer = async () => {
     } catch (err) {
       console.warn('⚠️ LIS Manager failed to start:', err.message);
     }
+  }).catch(err => {
+    console.error('❌ Database connection failed:', err.message);
+    // Don't exit — keep server running so health check passes
+    // Requests will fail gracefully until DB reconnects
   });
-};
-
-startServer().catch(err => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
 });
 
 module.exports = app;
