@@ -22,7 +22,16 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1); // Required for Render/Heroku — fixes rate limiter behind proxy
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// ── Determine if frontend build exists ──────────────────────────────────────
+const FRONTEND_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
+const hasFrontendBuild = fs.existsSync(path.join(FRONTEND_DIST, 'index.html'));
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // Relax CSP when serving frontend from same origin
+  contentSecurityPolicy: hasFrontendBuild ? false : undefined,
+}));
+
 app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
@@ -31,7 +40,7 @@ app.use(cors({
       'http://localhost:3000',
       'http://localhost:4173',
     ].filter(Boolean);
-    // Allow any vercel.app subdomain
+    // Allow any vercel.app subdomain, or no origin (same-origin/mobile)
     if (!origin || allowed.includes(origin) || /\.vercel\.app$/.test(origin)) {
       callback(null, true);
     } else {
@@ -103,15 +112,33 @@ app.use('/api/clinic', require('./routes/clinic'));
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
 });
 
+// ── Serve React Frontend Build (Production Mode) ────────────────────────────
+// When client/dist exists, serve the built frontend from the same Express port.
+// This means the full app (frontend + API) runs on a single port — no separate
+// Vite dev server needed. Just run: node server/src/index.js
+if (hasFrontendBuild) {
+  app.use(express.static(FRONTEND_DIST));
+  // All non-API routes → return React's index.html (for client-side routing)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
+  console.log(`📁 Serving React build from: ${FRONTEND_DIST}`);
+} else {
+  console.log('ℹ️  No frontend build found. Run: cd client && npm run build');
+}
+
 app.use(errorHandler);
 
 
 const PORT = process.env.PORT || 5000;
 
 // ── Start server FIRST (so Render health check passes immediately) ──
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 LIMS Server running on http://localhost:${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV}`);
+  if (hasFrontendBuild) {
+    console.log(`🌐 Full app accessible at: http://localhost:${PORT}`);
+  }
 
   // Connect to MongoDB after server is listening
   connectDB().then(() => {
