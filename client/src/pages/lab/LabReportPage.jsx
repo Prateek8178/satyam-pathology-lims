@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useReducer, useCallback, useRef, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import QRCode from 'qrcode';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -14,20 +13,20 @@ import {
 
 /* ═══════════════════════════════════════════════════════════════
    PRINT STYLES (injected once into <head>)
-   Maintains the EXACT old report layout, fonts, borders, alignments,
-   and ensures the Doctor Signature & Liability note repeats on every page!
+   Uses the EXACT original Satyam Pathology layout with fixed top header
+   and fixed bottom footer on every page!
 ═══════════════════════════════════════════════════════════════ */
 const PRINT_CSS = `
   @media print {
     @page {
       size: A4 portrait;
-      margin: 8mm 10mm 10mm 10mm;
+      margin: 8mm 12mm 12mm 12mm;
     }
 
-    /* Hide screen-only UI */
+    /* Hide everything on screen */
     body * { visibility: hidden !important; }
 
-    /* Show print root */
+    /* Show only the report and its contents */
     #REPORT_PRINT_ROOT,
     #REPORT_PRINT_ROOT * { visibility: visible !important; }
 
@@ -48,9 +47,10 @@ const PRINT_CSS = `
       color: #111 !important;
     }
 
+    /* Hide all interactive controls */
     .no-print { display: none !important; visibility: hidden !important; }
-    .print-only { display: block !important; visibility: visible !important; }
-    .print-inline { display: inline !important; visibility: visible !important; }
+    /* Show print-only elements */
+    .print-only { display: inline !important; visibility: visible !important; }
 
     /* Inputs appear as plain text without borders */
     input, select, textarea {
@@ -65,7 +65,12 @@ const PRINT_CSS = `
       box-shadow: none !important;
       -webkit-appearance: none !important;
       appearance: none !important;
+      display: inline !important;
     }
+
+    /* Table borders */
+    table { border-collapse: collapse !important; width: 100% !important; }
+    td, th { border-color: #b0c4d8 !important; }
 
     /* Hide empty unentered rows completely on print */
     .row-unentered {
@@ -85,7 +90,7 @@ const PRINT_CSS = `
       break-inside: avoid !important;
     }
 
-    /* Watermark */
+    /* Watermark visible on all pages */
     .report-watermark {
       position: fixed !important;
       top: 50% !important;
@@ -96,7 +101,7 @@ const PRINT_CSS = `
       opacity: 0.08 !important;
     }
 
-    /* Footer repeating on every page */
+    /* Fixed footer on bottom */
     .page-footer-container {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -105,9 +110,10 @@ const PRINT_CSS = `
 `;
 
 /* ═══════════════════════════════════════════════════════════════
-   HELPERS & REFERENCE RANGE ENGINE (Gender & Age Aware)
+   HELPERS & REFERENCE RANGE CALCULATION (Gender & Age Aware)
 ═══════════════════════════════════════════════════════════════ */
 const todayISO = () => new Date().toISOString().split('T')[0];
+const fmtDate  = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
 let _uid = 0;
 const uid = () => ++_uid;
@@ -126,8 +132,8 @@ const calcFlag = (result, refRange, gender, age) => {
     const gt = refRange.match(/>\s*([\d.]+)/); if (gt) { lo = +gt[1]; hi = Infinity; }
   }
   if (lo === null && hi === null) return null;
-  if (hi !== null && num > hi) return 'High';
-  if (lo !== null && num < lo) return 'Low';
+  if (hi !== null && num > hi) return 'H';
+  if (lo !== null && num < lo) return 'L';
   return null;
 };
 
@@ -150,6 +156,45 @@ const refFromParam = (p, gender = 'Male', age = 30) => {
   }
   return '';
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   MICROSCOPE SVG ICON (Exact Original Letterhead Silhouette)
+═══════════════════════════════════════════════════════════════ */
+const MicroscopeSVG = ({ size = 80, color = '#111', opacity = 1 }) => (
+  <svg width={size} height={size * 1.25} viewBox="0 0 160 200"
+       xmlns="http://www.w3.org/2000/svg" style={{ opacity, display: 'block' }}>
+    {/* Eyepiece */}
+    <rect x="68" y="0"  width="28" height="10" rx="4" fill={color}/>
+    <rect x="74" y="8"  width="16" height="28" rx="3" fill={color}/>
+    {/* Head / Nosepiece body */}
+    <rect x="60" y="33" width="40" height="18" rx="5" fill={color}/>
+    {/* Main arm — curved left side */}
+    <rect x="60" y="48" width="14" height="62" rx="6" fill={color}/>
+    {/* Coarse + fine focus knobs (left) */}
+    <ellipse cx="52" cy="80" rx="12" ry="8" fill={color}/>
+    <ellipse cx="52" cy="95" rx="9"  ry="6" fill={color}/>
+    {/* Stage (horizontal platform) */}
+    <rect x="48" y="108" width="72" height="10" rx="4" fill={color}/>
+    {/* Stage clip arms */}
+    <rect x="56" y="103" width="8"  height="8" rx="2" fill={color}/>
+    <rect x="96" y="103" width="8"  height="8" rx="2" fill={color}/>
+    {/* Sub-stage condenser */}
+    <rect x="70" y="117" width="22" height="14" rx="3" fill={color}/>
+    {/* Objective lenses */}
+    <rect x="90" y="48"  width="10" height="32" rx="3" fill={color}/>
+    <rect x="103" y="52" width="8"  height="24" rx="3" fill={color}/>
+    <rect x="115" y="56" width="7"  height="18" rx="3" fill={color}/>
+    {/* Objective nosepiece circle */}
+    <ellipse cx="100" cy="50" rx="18" ry="10" fill={color}/>
+    {/* Pillar connecting stage to base */}
+    <rect x="62" y="130" width="12" height="32" rx="4" fill={color}/>
+    {/* Base */}
+    <ellipse cx="78" cy="168" rx="52" ry="14" fill={color}/>
+    <rect x="26" y="158" width="104" height="14" rx="6" fill={color}/>
+    {/* Light source at base */}
+    <ellipse cx="78" cy="155" rx="8" ry="5" fill={color}/>
+  </svg>
+);
 
 /* ═══════════════════════════════════════════════════════════════
    STATE MANAGEMENT (useReducer)
@@ -185,6 +230,8 @@ function reducer(state, action) {
       return { ...state, showHeader: !state.showHeader };
     case 'SET_HEADER':
       return { ...state, showHeader: action.val };
+    case 'SET_SECTIONS':
+      return { ...state, sections: action.sections };
     case 'ADD_SECTION': {
       if (state.sections.find((s) => s.testName === action.section.testName)) return state;
       const initialCalculatedRows = recalculateSection(action.section.rows, action.section.testName);
@@ -195,11 +242,6 @@ function reducer(state, action) {
     }
     case 'REMOVE_SECTION':
       return { ...state, sections: state.sections.filter((s) => s.id !== action.id) };
-    case 'UPDATE_SECTION_META':
-      return {
-        ...state,
-        sections: state.sections.map((s) => (s.id === action.id ? { ...s, [action.field]: action.val } : s)),
-      };
     case 'ADD_ROW':
       return {
         ...state,
@@ -246,6 +288,13 @@ function reducer(state, action) {
         }),
       };
     }
+    case 'LOAD_SAVED_REPORT':
+      return {
+        ...state,
+        meta: action.payload.meta,
+        sections: action.payload.sections,
+        showHeader: true,
+      };
     case 'CLEAR':
       return {
         ...initState,
@@ -262,20 +311,6 @@ function reducer(state, action) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MICROSCOPE VECTOR ICON
-═══════════════════════════════════════════════════════════════ */
-const MicroscopeIcon = ({ size = 64, color = '#1a365d' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 18h8" />
-    <path d="M3 22h18" />
-    <path d="M14 22a7 7 0 1 0 0-14h-1" />
-    <path d="M9 14h2" />
-    <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z" />
-    <path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3" />
-  </svg>
-);
-
-/* ═══════════════════════════════════════════════════════════════
    EDITABLE TABLE INPUT COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) => (
@@ -286,7 +321,7 @@ const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) =
     placeholder={placeholder}
     style={{
       background: 'transparent',
-      border: '1px solid #cbd5e1',
+      border: '1px solid #ccc',
       borderRadius: '3px',
       padding: '2px 5px',
       fontSize: '11.5px',
@@ -300,18 +335,18 @@ const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) =
 ));
 
 /* ═══════════════════════════════════════════════════════════════
-   PARAMETER ROW COMPONENT
+   PARAMETER ROW COMPONENT (Original Table Layout)
 ═══════════════════════════════════════════════════════════════ */
 const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
   // If row is a subheader (e.g. "DIFFERENTIAL WBC COUNT", "BILLIRUBIN")
   if (row.isSubheader) {
     return (
-      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }} className="test-row-item">
+      <tr style={{ background: '#dce8f5', borderBottom: '1px solid #b0c4d8' }} className="test-row-item">
         <td colSpan={5} style={{ padding: '4px 8px' }}>
           <Editable
             value={row.param}
             placeholder="CATEGORY / SUBHEADER TITLE"
-            style={{ fontWeight: '800', color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px', border: '1px dashed #93c5fd' }}
+            style={{ fontWeight: '800', color: '#1e3a5f', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px', border: '1px dashed #93c5fd' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'param', value: e.target.value })
             }
@@ -332,20 +367,20 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
 
   const hasValue = isReportable(row.result);
   const flag = calcFlag(row.result, row.refRange, gender, age);
-  const isHigh = flag === 'High';
-  const isLow = flag === 'Low';
+  const isHigh = flag === 'H';
+  const isLow = flag === 'L';
   const isAbnormal = isHigh || isLow;
 
   return (
     <tr
       className={`test-row-item ${!hasValue ? 'row-unentered' : ''}`}
       style={{
-        background: isAbnormal ? '#fff5f5' : idx % 2 === 0 ? '#ffffff' : '#fafcff',
-        borderBottom: '1px solid #e2e8f0',
+        background: isAbnormal ? '#fff5f5' : idx % 2 === 0 ? '#ffffff' : '#f9fafb',
+        borderBottom: '1px solid #b0c4d8',
       }}
     >
       {/* Parameter Name */}
-      <td style={{ padding: '4px 8px', fontSize: '11.5px', color: '#1e293b', fontWeight: '500' }}>
+      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#111', border: '1px solid #b0c4d8' }}>
         <Editable
           value={row.param}
           placeholder="Parameter name"
@@ -356,7 +391,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
       </td>
 
       {/* Result */}
-      <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+      <td style={{ padding: '4px 6px', textAlign: 'center', border: '1px solid #b0c4d8' }}>
         <Editable
           value={row.result}
           placeholder="—"
@@ -372,13 +407,20 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
         />
       </td>
 
-      {/* Flag (High / Low) */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: '700', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#94a3b8' }}>
-        {flag || ''}
+      {/* Unit */}
+      <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: '1px solid #b0c4d8' }}>
+        <Editable
+          value={row.unit}
+          placeholder="unit"
+          style={{ textAlign: 'center', width: '65px' }}
+          onChange={(e) =>
+            dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'unit', value: e.target.value })
+          }
+        />
       </td>
 
       {/* Reference Value */}
-      <td style={{ padding: '4px 8px', fontSize: '11px', color: '#334155' }}>
+      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#333', border: '1px solid #b0c4d8' }}>
         <Editable
           value={row.refRange}
           placeholder="e.g. 12 - 15"
@@ -388,16 +430,9 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
         />
       </td>
 
-      {/* Unit */}
-      <td style={{ padding: '4px 8px', textAlign: 'center', fontSize: '11px', color: '#475569' }}>
-        <Editable
-          value={row.unit}
-          placeholder="unit"
-          style={{ textAlign: 'center', width: '65px' }}
-          onChange={(e) =>
-            dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'unit', value: e.target.value })
-          }
-        />
+      {/* Flag (H / L) */}
+      <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: '1px solid #b0c4d8' }}>
+        {flag || ''}
       </td>
 
       {/* Screen Remove Button */}
@@ -415,7 +450,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   TEST SECTION COMPONENT (Matching Sample Report)
+   TEST SECTION COMPONENT (Original Blue Bar Layout)
 ═══════════════════════════════════════════════════════════════ */
 const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) => {
   const [savingTpl, setSavingTpl] = useState(false);
@@ -427,43 +462,58 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) =>
   };
 
   return (
-    <div className="test-section-block" style={{ marginBottom: '14px' }}>
-      {/* Test Title Bar */}
-      <div style={{ textAlign: 'center', margin: '6px 0 4px 0', borderBottom: '1.5px solid #1e3a5f', paddingBottom: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-        <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', letterSpacing: '0.3px', textTransform: 'none' }}>
-          {section.testName}
-        </span>
+    <div className="test-section-block" style={{ marginBottom: '10px' }}>
+      {/* Test Title Bar (Original Navy Blue Header) */}
+      <div style={{ background: '#1e3a5f', color: 'white', padding: '4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.5px' }}>{section.testName.toUpperCase()}</span>
         
-        {/* Actions for Section Template Management */}
-        <div className="no-print" style={{ position: 'absolute', right: 0, display: 'flex', gap: '6px' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             onClick={handleSaveTpl}
             disabled={savingTpl}
-            style={{ fontSize: '10.5px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', fontWeight: '600' }}
-            title="Save these parameters and formulas into the Master Test Template for future reports"
+            style={{ fontSize: '10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: '600' }}
+            title="Save these parameters into the Master Test Template for future reports"
           >
-            {savingTpl ? 'Saving...' : '💾 Save as Test Template'}
+            {savingTpl ? 'Saving...' : '💾 Save Template'}
           </button>
           <button
             onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
-            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
-            title="Remove from current report"
+            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+            title="Remove section"
           >
-            [Delete]
+            ✕
           </button>
         </div>
       </div>
 
-      {/* Parameters Table */}
+      {/* Parameters Table (Exact Original Structure) */}
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderTop: '2px solid #0f172a', borderBottom: '1.5px solid #0f172a' }}>
-            <th style={{ padding: '4px 8px', fontSize: '11px', fontWeight: '800', color: '#0f172a', textAlign: 'left', width: '38%' }}>Test</th>
-            <th style={{ padding: '4px 8px', fontSize: '11px', fontWeight: '800', color: '#0f172a', textAlign: 'center', width: '16%' }}>Result</th>
-            <th style={{ padding: '4px 6px', fontSize: '11px', fontWeight: '800', color: '#0f172a', textAlign: 'center', width: '10%' }}></th>
-            <th style={{ padding: '4px 8px', fontSize: '11px', fontWeight: '800', color: '#0f172a', textAlign: 'left', width: '22%' }}>Ref. Value</th>
-            <th style={{ padding: '4px 8px', fontSize: '11px', fontWeight: '800', color: '#0f172a', textAlign: 'center', width: '14%' }}>Unit</th>
-            <th className="no-print" style={{ width: '24px' }}></th>
+          <tr style={{ background: '#dce8f5', borderBottom: '1px solid #b0c4d8' }}>
+            {[
+              ['Parameter', '34%'],
+              ['Result', '14%'],
+              ['Unit', '11%'],
+              ['Reference Range', '30%'],
+              ['Flag', '6%'],
+              ['', '5%']
+            ].map(([h, w]) => (
+              <th
+                key={h}
+                className={h === '' ? 'no-print' : ''}
+                style={{
+                  padding: '4px 6px',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  color: '#1e3a5f',
+                  textAlign: h === 'Result' || h === 'Unit' || h === 'Flag' ? 'center' : 'left',
+                  width: w,
+                  border: '1px solid #b0c4d8',
+                }}
+              >
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -473,25 +523,25 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) =>
         </tbody>
       </table>
 
-      {/* Screen Add Row & Subheader buttons */}
-      <div className="no-print" style={{ marginTop: '5px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {/* Screen Add Row buttons */}
+      <div className="no-print" style={{ marginTop: '3px', display: 'flex', gap: '8px' }}>
         <button
           onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id, isSubheader: false })}
-          style={{ fontSize: '11px', color: '#1e40af', background: 'none', border: '1px dashed #93c5fd', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}
+          style={{ fontSize: '11px', color: '#1e3a5f', background: 'none', border: '1px dashed #1e3a5f', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
         >
-          + Add Parameter Row
+          + Add Row
         </button>
         <button
           onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id, isSubheader: true })}
-          style={{ fontSize: '11px', color: '#0369a1', background: 'none', border: '1px dashed #7dd3fc', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}
+          style={{ fontSize: '11px', color: '#0369a1', background: 'none', border: '1px dashed #0284c7', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
         >
-          + Add Category / Subheader
+          + Add Subheader
         </button>
       </div>
 
       {/* Method / Comments / Interpretation Box if available */}
       {section.comments && (
-        <div style={{ marginTop: '8px', padding: '6px 8px', border: '1px solid #1e293b', borderRadius: '2px', fontSize: '9px', lineHeight: '1.35', color: '#1e293b' }}>
+        <div style={{ marginTop: '6px', padding: '5px 8px', border: '1px solid #1e3a5f', borderRadius: '2px', fontSize: '9px', lineHeight: '1.35', color: '#1e293b' }}>
           <div style={{ fontWeight: '700', marginBottom: '2px' }}>Interpretation / Comments:</div>
           <div style={{ whiteSpace: 'pre-line' }}>{section.comments}</div>
         </div>
@@ -501,169 +551,154 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) =>
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   HEADER COMPONENT (Matching 12-Page Sample)
+   ORIGINAL LAB HEADER (Satyam Pathology Center)
 ═══════════════════════════════════════════════════════════════ */
 const LabHeader = memo(({ logoUrl, settings }) => {
   const s = settings || {};
-  const labName = s.name || 'We Care PATHOLOGY LAB';
-  const tagline = s.tagline || 'Accurate Results Timely Delivered';
-  const address = s.address || '1283, BT Road near Maruti Marbal, Choti Bajariya, Garha Jabalpur (M.P.)';
-  const support = s.customerSupport || s.phone || '9131709514';
+  const name    = s.name    || 'SATYAM PATHOLOGY CENTER';
+  const tagline = s.tagline || 'Accurate | Caring | Instant';
+  const address = s.address || 'Inside Gopi Medical, Sheetla Mai Chauraha, Jabalpur';
+  const phone   = s.phone   || '9165144073, 9340311506, 9516128613';
+  const email   = s.email   || 'lp93403115@gmail.com';
 
   return (
-    <div style={{ marginBottom: '8px', borderBottom: '2px solid #0f172a', paddingBottom: '6px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        
-        {/* Left: Blue Banner Badge */}
-        <div style={{
-          background: '#1d3557',
-          color: 'white',
-          padding: '8px 14px',
-          borderRadius: '4px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          minWidth: '180px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: '900', letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ffffff' }}>
-            PATHOLOGY REPORTS
+    <div style={{ marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '10px' }}>
+        {/* Logo left — use uploaded image or SVG microscope */}
+        <div style={{ flexShrink: 0 }}>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Lab Logo" style={{ width: '80px', height: '100px', objectFit: 'contain' }} />
+          ) : (
+            <MicroscopeSVG size={72} color="#111" />
+          )}
+        </div>
+
+        {/* Clinic details center */}
+        <div style={{ flex: 1, textAlign: 'center', lineHeight: '1.2' }}>
+          <div style={{
+            fontSize: '32px',
+            fontWeight: '900',
+            color: '#c62828',
+            fontFamily: '"Arial Black", "Arial", sans-serif',
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+          }}>
+            {name}
           </div>
           <div style={{
-            background: '#e63946',
-            color: '#ffffff',
-            fontSize: '9.5px',
-            fontWeight: '700',
-            padding: '2px 6px',
-            borderRadius: '2px',
+            fontSize: '14px',
+            fontWeight: '800',
+            color: '#1a237e',
             marginTop: '3px',
-            letterSpacing: '0.3px',
-            textAlign: 'center'
+            letterSpacing: '0.5px',
           }}>
             {tagline}
           </div>
-        </div>
-
-        {/* Center: Microscope Logo */}
-        <div style={{ flexShrink: 0, textAlign: 'center' }}>
-          {logoUrl ? (
-            <img src={logoUrl} alt="Logo" style={{ height: '62px', width: 'auto', objectFit: 'contain' }} />
-          ) : (
-            <MicroscopeIcon size={56} color="#1d3557" />
-          )}
-        </div>
-
-        {/* Right: Lab Name & Address */}
-        <div style={{ textAlign: 'right', flex: 1 }}>
-          <div style={{
-            fontFamily: '"Brush Script MT", "Dancing Script", "Lucida Calligraphy", cursive, sans-serif',
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#e63946',
-            lineHeight: '1',
-            letterSpacing: '0.5px'
-          }}>
-            {labName.includes('We Care') ? 'We Care' : labName}
-          </div>
-          <div style={{ fontSize: '10px', fontWeight: '800', color: '#1d3557', letterSpacing: '0.8px', textTransform: 'uppercase', marginTop: '2px' }}>
-            {labName.includes('We Care') ? 'PATHOLOGY LAB' : 'DIAGNOSTIC CENTER'}
-          </div>
-          <div style={{ fontSize: '9px', color: '#334155', marginTop: '2px', lineHeight: '1.25', maxWidth: '300px', marginLeft: 'auto' }}>
+          <div style={{ fontSize: '11.5px', color: '#1a237e', marginTop: '5px', fontWeight: '500' }}>
             {address}
           </div>
-          <div style={{ fontSize: '9.5px', fontWeight: '700', color: '#0f172a', marginTop: '2px' }}>
-            Customer Support :- {support}
+          <div style={{ fontSize: '11.5px', color: '#1a237e', marginTop: '3px' }}>
+            {phone} {email ? `| ${email}` : ''}
           </div>
         </div>
       </div>
+
+      {/* Top separator — double line */}
+      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '10px' }} />
     </div>
   );
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   PATIENT INFO BOX (Matching 12-Page Sample)
+   ORIGINAL PATIENT INFO BOX (Satyam Pathology)
 ═══════════════════════════════════════════════════════════════ */
-const PatientInfoSection = memo(({ patient, meta, dispatch, qrDataUrl }) => {
+const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
   const upMeta = useCallback((field, val) => dispatch({ type: 'SET_META', payload: { [field]: val } }), [dispatch]);
 
-  const pName = patient?.fullName || '—';
-  const uhid = patient?.patientId || meta.reportNo || 'UHID 1742';
-  const refBy = meta.refDoctor || patient?.referredByName || patient?.referringDoctor?.name || 'Self';
-  const mobile = patient?.mobile;
+  const fmtTime = (t) => {
+    if (!t) return '';
+    const [h, min] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hh = h % 12 || 12;
+    return `${String(hh).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
+  };
 
   return (
-    <div style={{
-      fontSize: '11px',
-      borderBottom: '2px solid #0f172a',
-      paddingBottom: '6px',
-      marginBottom: '10px',
-      lineHeight: '1.35',
-      color: '#0f172a',
-    }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.1fr 1.2fr', gap: '4px 16px', alignItems: 'center' }}>
-        
-        {/* Col 1: Name, Age, Sex, UHID */}
+    <div style={{ fontSize: '11.5px', borderBottom: '2px solid #1e3a5f', paddingBottom: '6px', marginBottom: '8px' }}>
+      {/* Row 1 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px 16px', marginBottom: '3px' }}>
+        <div><b>Patient Name:</b> {patient?.fullName || '—'}</div>
         <div>
-          <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
-            {pName}
-          </div>
-          <div style={{ marginTop: '2px' }}>
-            <span style={{ fontWeight: '600' }}>Age : </span>
-            {patient?.age ? `${patient.age} Years` : '—'}
-          </div>
-          <div style={{ marginTop: '1px' }}>
-            <span style={{ fontWeight: '600' }}>Sex : </span>
-            <span style={{ fontWeight: '700', color: patient?.gender ? '#0f172a' : '#dc2626' }}>
-              {patient?.gender || 'Missing (Required)'}
-            </span>
-          </div>
-          <div style={{ marginTop: '1px' }}>
-            <span style={{ fontWeight: '600' }}>UHID : </span>
-            {uhid}
-          </div>
-          {mobile && (
-            <div style={{ marginTop: '1px', fontSize: '10px', color: '#475569' }}>
-              <span style={{ fontWeight: '600' }}>Mob: </span>
-              {mobile}
-            </div>
-          )}
+          <b>Age / Sex:</b> {patient?.age ? `${patient.age} Yrs` : '—'} /{' '}
+          <strong style={{ color: patient?.gender ? '#111' : '#dc2626' }}>
+            {patient?.gender || 'Missing (Required)'}
+          </strong>
         </div>
-
-        {/* Col 2: QR Code & Ref. By */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {qrDataUrl && (
-            <img src={qrDataUrl} alt="QR" style={{ width: '52px', height: '52px', flexShrink: 0 }} />
-          )}
-          <div>
-            <div style={{ fontWeight: '700', fontSize: '10.5px' }}>Ref. By :</div>
-            <div className="no-print">
-              <input
-                value={meta.refDoctor}
-                onChange={(e) => upMeta('refDoctor', e.target.value)}
-                placeholder="Doctor name"
-                style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', width: '120px' }}
-              />
-            </div>
-            <div className="print-only" style={{ fontWeight: '700', fontSize: '11px', textTransform: 'uppercase' }}>
-              {refBy}
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Report No:</b>
+          <input
+            value={meta.reportNo}
+            onChange={(e) => upMeta('reportNo', e.target.value)}
+            style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', width: '130px', fontSize: '11px', outline: 'none' }}
+          />
         </div>
+      </div>
 
-        {/* Col 3: Timestamps */}
-        <div style={{ fontSize: '10px', textAlign: 'right' }}>
-          <div>
-            <span style={{ fontWeight: '600' }}>Registered : </span>
-            {meta.sampleDate || todayISO()} 09:00 AM
-          </div>
-          <div style={{ marginTop: '2px' }}>
-            <span style={{ fontWeight: '600' }}>Collected : </span>
-            {meta.sampleDate || todayISO()} 09:45 AM
-          </div>
-          <div style={{ marginTop: '2px' }}>
-            <span style={{ fontWeight: '600' }}>Reported : </span>
-            {meta.sampleDate || todayISO()} 04:00 PM
-          </div>
+      {/* Row 2 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px 16px', marginBottom: '3px' }}>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Ref. Doctor:</b>
+          <input
+            value={meta.refDoctor}
+            onChange={(e) => upMeta('refDoctor', e.target.value)}
+            placeholder="Doctor name"
+            style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', flex: 1, fontSize: '11px', outline: 'none' }}
+          />
+          <button
+            className="no-print"
+            onClick={() => upMeta('refDoctor', 'Self')}
+            style={{ fontSize: '9px', padding: '1px 5px', border: '1px solid #ccc', borderRadius: '3px', background: meta.refDoctor === 'Self' ? '#1e3a5f' : '#f3f4f6', color: meta.refDoctor === 'Self' ? 'white' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            Self
+          </button>
+        </div>
+        <div><b>Mobile:</b> {patient?.mobile || '—'}</div>
+        {/* Date + Time */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Date &amp; Time:</b>
+          <span className="no-print" style={{ display: 'flex', gap: '3px' }}>
+            <input
+              type="date"
+              value={meta.sampleDate}
+              onChange={(e) => upMeta('sampleDate', e.target.value)}
+              style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none' }}
+            />
+            <input
+              type="time"
+              value={meta.sampleTime || ''}
+              onChange={(e) => upMeta('sampleTime', e.target.value)}
+              style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none', width: '72px' }}
+            />
+          </span>
+          <span className="print-only" style={{ display: 'none' }}>
+            {fmtDate(meta.sampleDate)}{meta.sampleTime ? ` ${fmtTime(meta.sampleTime)}` : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Row 3 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 16px' }}>
+        <div>
+          <b>Address:</b> {[patient?.address?.street, patient?.address?.city, patient?.address?.state].filter(Boolean).join(', ') || '—'}
+        </div>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Sample Type:</b>
+          <input
+            value={meta.sampleType}
+            onChange={(e) => upMeta('sampleType', e.target.value)}
+            placeholder="e.g. Serum / EDTA Blood"
+            style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', flex: 1, fontSize: '11px', outline: 'none' }}
+          />
         </div>
       </div>
     </div>
@@ -671,36 +706,51 @@ const PatientInfoSection = memo(({ patient, meta, dispatch, qrDataUrl }) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   FOOTER COMPONENT (Repeating on Every Page)
+   ORIGINAL REPORT FOOTER (Fixed at the bottom)
 ═══════════════════════════════════════════════════════════════ */
-const ReportFooter = memo(({ signatureUrl, settings }) => {
+const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
+  const upMeta = useCallback((field, val) => dispatch({ type: 'SET_META', payload: { [field]: val } }), [dispatch]);
   const s = settings || {};
-  const docName = s.doctorName || 'DR. R K SAGARIYA';
-  const docDegree = s.doctorDegree || 'MD PATHOLOGY';
-  const disclaimer = s.disclaimer || 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.';
+  const docName = s.doctorName || 'Dr. KHUSHBOO SHAH';
+  const docDegree = s.doctorDegree || '(MD. Pathology)';
+  const notesText = s.notes || s.disclaimer || `Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.`;
 
   return (
-    <div className="page-footer-container" style={{ marginTop: '16px', fontSize: '9px', color: '#1e293b' }}>
-      {/* Doctor Signature Block (Right-aligned) */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-        <div style={{ textAlign: 'center', minWidth: '170px' }}>
-          {signatureUrl ? (
-            <img src={signatureUrl} alt="Signature" style={{ height: '42px', width: 'auto', objectFit: 'contain', margin: '0 auto 2px' }} />
-          ) : (
-            <div style={{ height: '36px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', fontFamily: '"Dancing Script", cursive', fontSize: '20px', color: '#111' }}>
-              R.K. Sagariya
-            </div>
-          )}
-          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '3px' }}>
-            <div style={{ fontWeight: '900', fontSize: '11px', letterSpacing: '0.3px', color: '#0f172a' }}>{docName}</div>
-            <div style={{ fontSize: '9.5px', color: '#475569', fontWeight: '600' }}>{docDegree}</div>
+    <div className="page-footer-container" style={{ marginTop: '32px', fontSize: '10px' }}>
+      {/* Top separator — same double line style as header */}
+      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '14px' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px' }}>
+        {/* Left: Prepared By + Notes */}
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px', fontSize: '11px' }}>
+            <span style={{ fontWeight: '600' }}>Prepared By :</span>
+            <input
+              value={meta.preparedBy}
+              onChange={(e) => upMeta('preparedBy', e.target.value)}
+              placeholder="____________"
+              style={{ border: 'none', borderBottom: '1px solid #444', outline: 'none', width: '140px', fontSize: '11px', background: 'transparent' }}
+            />
+          </div>
+          <div style={{ color: '#333', lineHeight: '1.55', maxWidth: '380px', fontSize: '9.5px' }}>
+            <span style={{ fontWeight: '700' }}>Notes: </span>
+            {notesText}
           </div>
         </div>
-      </div>
 
-      {/* Bottom Legal Disclaimer Note */}
-      <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '4px', textAlign: 'center', fontSize: '8px', color: '#64748b', lineHeight: '1.3' }}>
-        {disclaimer}
+        {/* Right: Signature + Dr. Name */}
+        <div style={{ textAlign: 'center', minWidth: '160px', flexShrink: 0 }}>
+          {signatureUrl ? (
+            <img src={signatureUrl} alt="Signature" style={{ height: '52px', objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} />
+          ) : (
+            <div style={{ height: '52px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', fontFamily: '"Dancing Script", "Brush Script MT", cursive', fontSize: '22px', color: '#222', lineHeight: '1' }}>
+              Khushboo.
+            </div>
+          )}
+          <div style={{ borderTop: '1px solid #333', paddingTop: '4px', marginTop: '2px' }}>
+            <div style={{ fontWeight: '900', fontSize: '12px', letterSpacing: '0.3px' }}>{docName}</div>
+            <div style={{ color: '#444', fontSize: '10.5px' }}>{docDegree}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -711,7 +761,9 @@ const ReportFooter = memo(({ signatureUrl, settings }) => {
 ═══════════════════════════════════════════════════════════════ */
 export default function LabReportPage() {
   const navigate = useNavigate();
+  const { id: routeId, patientId: routePatientId } = useParams();
   const { user } = useAuth();
+
   const [state, dispatch] = useReducer(reducer, null, () => {
     const now = new Date();
     const dd = String(now.getDate()).padStart(2, '0');
@@ -741,7 +793,6 @@ export default function LabReportPage() {
 
   // Clinic assets & persistent DB settings
   const [assets, setAssets] = useState({ logo: null, signature: null, settings: {} });
-  const [qrDataUrl, setQrDataUrl] = useState('');
 
   const loadAssets = useCallback(() => {
     api.get('/clinic/assets')
@@ -769,14 +820,6 @@ export default function LabReportPage() {
     loadAssets();
   }, [loadAssets]);
 
-  // Generate QR Code for verification
-  useEffect(() => {
-    const reportId = state.meta.reportNo || 'STP-VERIFY-001';
-    QRCode.toDataURL(`https://satyam-pathology-lims.com/verify/${reportId}`, { width: 100, margin: 1 })
-      .then((url) => setQrDataUrl(url))
-      .catch(() => {});
-  }, [state.meta.reportNo]);
-
   // Load all tests from database
   const loadAllTests = useCallback(() => {
     api.get('/tests', { params: { limit: 300 } })
@@ -792,6 +835,64 @@ export default function LabReportPage() {
   useEffect(() => {
     loadAllTests();
   }, [loadAllTests]);
+
+  // ── LOAD SAVED REPORT IF ROUTE ID PRESENT (Reprint functionality) ──
+  useEffect(() => {
+    if (routeId) {
+      api.get(`/saved-reports/${routeId}`)
+        .then((r) => {
+          const report = r.data?.data;
+          if (!report) return;
+          if (report.patient) {
+            setSelPatient(report.patient);
+            setPatSearch(report.patient.fullName || '');
+          }
+          const loadedSections = (report.sections || []).map((sec) => ({
+            id: uid(),
+            testName: sec.testName,
+            comments: sec.comments || '',
+            rows: (sec.rows || []).map((rw) => ({
+              id: uid(),
+              param: rw.param,
+              result: rw.result || '',
+              unit: rw.unit || '',
+              refRange: rw.refRange || '',
+              isSubheader: rw.isSubheader || false,
+            })),
+          }));
+
+          dispatch({
+            type: 'LOAD_SAVED_REPORT',
+            payload: {
+              meta: {
+                reportNo: report.reportNo || '',
+                refDoctor: report.refDoctor || '',
+                sampleDate: report.sampleDate ? report.sampleDate.slice(0, 10) : todayISO(),
+                sampleTime: report.sampleTime || '',
+                sampleType: report.sampleType || '',
+                preparedBy: report.preparedBy || '',
+              },
+              sections: loadedSections,
+            },
+          });
+          toast.success(`Loaded saved report: ${report.reportNo}`);
+        })
+        .catch(() => {
+          toast.error('Could not load saved report');
+        });
+    } else if (routePatientId) {
+      api.get(`/patients/${routePatientId}`)
+        .then((r) => {
+          const p = r.data?.data;
+          if (p) {
+            setSelPatient(p);
+            setPatSearch(p.fullName);
+            dispatch({ type: 'SET_META', payload: { refDoctor: p.referredByName || p.referringDoctor?.name || 'Self' } });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [routeId, routePatientId]);
 
   // Patient search
   useEffect(() => {
@@ -855,7 +956,7 @@ export default function LabReportPage() {
             rows,
           },
         });
-        // Notice: testSearch is intentionally PRESERVED (NOT cleared) as requested in Rule #11!
+        // testSearch is intentionally preserved (NOT cleared) as requested
       } catch {
         toast.error('Could not load test parameters');
       } finally {
@@ -1131,7 +1232,7 @@ export default function LabReportPage() {
           </div>
 
           <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '10px', color: '#64748b' }}>
-            💡 <strong>Smart Master:</strong> You can add/remove rows or formulas in any test and click <em>"Save as Test Template"</em> to update it for all future reports!
+            💡 <strong>Smart Master:</strong> You can add/remove rows or formulas in any test and click <em>"Save Template"</em> to update it for all future reports!
           </div>
         </div>
 
@@ -1142,7 +1243,7 @@ export default function LabReportPage() {
             disabled={!selPatient || state.sections.length === 0}
             style={{
               padding: '9px',
-              background: !selPatient || state.sections.length === 0 ? '#cbd5e1' : '#1d3557',
+              background: !selPatient || state.sections.length === 0 ? '#cbd5e1' : '#1e3a5f',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -1177,8 +1278,8 @@ export default function LabReportPage() {
             style={{
               padding: '7px',
               background: '#ffffff',
-              color: '#1d3557',
-              border: '1px solid #1d3557',
+              color: '#1e3a5f',
+              border: '1px solid #1e3a5f',
               borderRadius: '8px',
               fontWeight: '600',
               fontSize: '11.5px',
@@ -1190,7 +1291,7 @@ export default function LabReportPage() {
         </div>
       </div>
 
-      {/* ── RIGHT: LIVE A4 REPORT PREVIEW (EXACT OLD REPORT FORMAT) ─────────────────── */}
+      {/* ── RIGHT: LIVE A4 REPORT PREVIEW (EXACT ORIGINAL SATYAM PATHOLOGY FORMAT) ─────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
         
         {/* Preview Control Bar */}
@@ -1204,7 +1305,7 @@ export default function LabReportPage() {
                 padding: '4px 10px',
                 borderRadius: '6px',
                 border: '1px solid #cbd5e1',
-                background: state.showHeader === h ? '#1d3557' : 'white',
+                background: state.showHeader === h ? '#1e3a5f' : 'white',
                 color: state.showHeader === h ? 'white' : '#334155',
                 fontSize: '11.5px',
                 fontWeight: '600',
@@ -1234,7 +1335,7 @@ export default function LabReportPage() {
             boxSizing: 'border-box',
           }}
         >
-          {/* Watermark Logo / Icon */}
+          {/* Watermark Logo / Microscope */}
           <div className="report-watermark" style={{
             position: 'absolute',
             top: '50%',
@@ -1242,30 +1343,29 @@ export default function LabReportPage() {
             transform: 'translate(-50%, -50%)',
             pointerEvents: 'none',
             zIndex: 0,
-            opacity: 0.1,
+            opacity: 0.08,
           }}>
             {assets.logo ? (
               <img src={assets.logo} alt="Watermark" style={{ width: '280px', height: '280px', objectFit: 'contain', filter: 'grayscale(100%)' }} />
             ) : (
-              <MicroscopeIcon size={260} color="#64748b" />
+              <MicroscopeSVG size={220} color="#111" opacity={1} />
             )}
           </div>
 
           {/* Content Layer above watermark */}
           <div style={{ position: 'relative', zIndex: 1 }}>
             
-            {/* Header Section */}
+            {/* Header Section (Original Satyam Header) */}
             {state.showHeader && (
               <LabHeader logoUrl={assets.logo} settings={assets.settings} />
             )}
 
-            {/* Patient Information Section */}
+            {/* Patient Information Section (Original Satyam Patient Box) */}
             {selPatient ? (
               <PatientInfoSection
                 patient={selPatient}
                 meta={state.meta}
                 dispatch={dispatch}
-                qrDataUrl={qrDataUrl}
               />
             ) : (
               <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
@@ -1293,9 +1393,11 @@ export default function LabReportPage() {
               ))
             )}
 
-            {/* Footer with Doctor Signature & Disclaimer */}
+            {/* Footer with Doctor Signature & Disclaimer (Original Satyam Footer) */}
             {state.showHeader && state.sections.length > 0 && (
               <ReportFooter
+                meta={state.meta}
+                dispatch={dispatch}
                 signatureUrl={assets.signature}
                 settings={assets.settings}
               />

@@ -250,6 +250,32 @@ export const recalculateSection = (rows = [], testName = '') => {
       }
     }
 
+    // ──────────────────────── PT / INR CALCULATIONS ───────────────────
+    // Ratio = Patient PT / Control PT
+    if ((pName.includes('ratio') || pName === 'ptratio') && (pName.includes('pt') || testName.toUpperCase().includes('PT') || testName.toUpperCase().includes('INR'))) {
+      const pt = getVal('patienttime', 'pt', 'patientpt', 'prothrombintime', 'pttime');
+      const ctrl = getVal('controltime', 'controlpt', 'control', 'normalcontrol', 'ptctrl');
+      if (pt !== null && ctrl !== null && ctrl > 0) {
+        return { ...r, result: roundTo(pt / ctrl, 2), isCalculated: true };
+      }
+    }
+
+    // INR = (Patient PT / Control PT) ^ ISI (default ISI = 1.0)
+    if (pName === 'inr' || pName.includes('inr') || pName.includes('internationalnormalizedratio')) {
+      const pt = getVal('patienttime', 'pt', 'patientpt', 'prothrombintime', 'pttime');
+      const ctrl = getVal('controltime', 'controlpt', 'control', 'normalcontrol', 'ptctrl');
+      let ratio = getVal('ratio', 'ptratio');
+      if (ratio === null && pt !== null && ctrl !== null && ctrl > 0) {
+        ratio = pt / ctrl;
+      }
+      const isi = getVal('isi', 'isivalue') ?? 1.0;
+      if (ratio !== null && ratio > 0) {
+        const inr = Math.pow(ratio, isi);
+        return { ...r, result: roundTo(inr, 2), isCalculated: true };
+      }
+      if (pt === null || ctrl === null) return r.isManual ? r : { ...r, result: '' };
+    }
+
     // ──────────────────────── HBA1C CALCULATIONS ──────────────────────
     // Mean Blood Glucose (eAG) = 28.7 * HbA1c - 46.7
     if (pName.includes('meanbloodglucose') || pName.includes('estimatedaverageglucose') || pName === 'eag' || pName.includes('mbg')) {

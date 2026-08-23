@@ -132,6 +132,17 @@ async function runTests() {
   assert(kftCalculated.find(r => r.param.includes('Urea / Creatinine'))?.result === '64.86', 'Test 3.10: KFT Urea/Creatinine Ratio (64.86)');
   assert(kftCalculated.find(r => r.param.includes('BUN'))?.result === '22.4', 'Test 3.11: KFT BUN (22.4)');
 
+  // PT / INR
+  const ptRows = [
+    { param: 'Patient Time (PT)', result: '14.4' },
+    { param: 'Control Time', result: '12.0' },
+    { param: 'Ratio', result: '' },
+    { param: 'INR', result: '' },
+  ];
+  const ptCalculated = recalculateSection(ptRows, 'Prothrombin Time (PT / INR)');
+  assert(ptCalculated.find(r => r.param === 'Ratio')?.result === '1.2', 'Test 3.12: PT Ratio calculated (14.4 / 12.0 = 1.2)');
+  assert(ptCalculated.find(r => r.param === 'INR')?.result === '1.2', 'Test 3.13: INR calculated (1.2)');
+
   // ── TEST GROUP 4: Database Models & Gender Validation ──
   console.log('\n--- Group 4: Database Operations & Gender Validation ---');
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/lims';

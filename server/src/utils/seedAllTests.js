@@ -471,6 +471,15 @@ const PARAMETERS = {
     { paramName: 'P C T', paramCode: 'PCT', unit: '%', maleRange: { low: 0.15, high: 0.62 }, femaleRange: { low: 0.15, high: 0.62 }, displayOrder: 19 }
   ],
 
+  // ── PT / INR PARAMETERS ──
+  PTINR: [
+    { paramName: 'Patient Time (PT)', paramCode: 'PT_TIME', unit: 'seconds', maleRange: { low: 11.0, high: 15.0 }, femaleRange: { low: 11.0, high: 15.0 }, displayOrder: 1 },
+    { paramName: 'Control Time', paramCode: 'PT_CTRL', unit: 'seconds', textRange: '11.0 - 13.0', maleRange: { low: 11.0, high: 13.0 }, femaleRange: { low: 11.0, high: 13.0 }, displayOrder: 2 },
+    { paramName: 'Ratio', paramCode: 'PT_RATIO', unit: '', maleRange: { low: 0.8, high: 1.2 }, femaleRange: { low: 0.8, high: 1.2 }, displayOrder: 3, isCalculated: true, formula: 'PT_TIME / PT_CTRL', dependencies: ['PT_TIME', 'PT_CTRL'] },
+    { paramName: 'INR', paramCode: 'INR', unit: '', textRange: '0.8 - 1.2', maleRange: { low: 0.8, high: 1.2 }, femaleRange: { low: 0.8, high: 1.2 }, displayOrder: 4, isCalculated: true, formula: 'PT_TIME / PT_CTRL', dependencies: ['PT_TIME', 'PT_CTRL'] },
+    { paramName: 'ISI Value', paramCode: 'ISI', unit: '', textRange: '1.0', displayOrder: 5 }
+  ],
+
   // ── LFT PARAMETERS ──
   LFT: [
     { paramName: 'BILLIRUBIN', paramCode: 'BIL_HEAD', unit: '', isSubheader: true, resultType: 'subheader', displayOrder: 1 },

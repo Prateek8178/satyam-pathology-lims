@@ -107,10 +107,13 @@ const App = () => (
           <Route path="/patients/:id"      element={<PatientDetail />} />
           <Route path="/patients/:id/edit" element={<EditPatient />} />
           {/* Report routes — LAB_TECHNICIAN / LAB_ADMIN / SUPER_ADMIN only */}
-          <Route path="/patients/:patientId/report" element={<RoleGuard><LabReportPage /></RoleGuard>} />
-          <Route path="/report-builder"             element={<RoleGuard><LabReportPage /></RoleGuard>} />
-          <Route path="/report-history"             element={<RoleGuard><ReportHistory /></RoleGuard>} />
-          <Route path="/change-password"            element={<ChangePassword />} />
+          <Route path="/patients/:patientId/report"    element={<RoleGuard><LabReportPage /></RoleGuard>} />
+          <Route path="/report-builder"                element={<RoleGuard><LabReportPage /></RoleGuard>} />
+          <Route path="/report-history"                element={<RoleGuard><ReportHistory /></RoleGuard>} />
+          <Route path="/report-history/:id/reprint"    element={<RoleGuard><LabReportPage /></RoleGuard>} />
+          <Route path="/report-history/:id"            element={<RoleGuard><LabReportPage /></RoleGuard>} />
+          <Route path="/saved-reports/:id"             element={<RoleGuard><LabReportPage /></RoleGuard>} />
+          <Route path="/change-password"               element={<ChangePassword />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/patients" replace />} />
