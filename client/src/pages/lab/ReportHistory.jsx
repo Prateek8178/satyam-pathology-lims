@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-
-const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+import { formatDateTimeAMPM } from '../../utils/dateFormatter';
 
 export default function ReportHistory() {
   const navigate = useNavigate();
@@ -101,7 +100,7 @@ export default function ReportHistory() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600 text-sm">{r.refDoctor || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{fmtDate(r.sampleDate || r.createdAt)}</td>
+                  <td className="px-4 py-3 text-slate-500 text-xs">{formatDateTimeAMPM(r.sampleDate || r.createdAt, r.sampleTime)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button onClick={() => navigate(`/report-history/${r._id}/reprint`)}

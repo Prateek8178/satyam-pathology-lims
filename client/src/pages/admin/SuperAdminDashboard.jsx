@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-const fmtDate = d => d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtDate = d => d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '—';
 const fmtDateShort = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 /* ── Stat Card ─────────────────────────────────────────────── */
@@ -53,15 +53,15 @@ export default function SuperAdminDashboard() {
   // Clinic settings state
   const [clinicAssets, setClinicAssets] = useState({ logo: null, signature: null });
   const [clinicForm, setClinicForm] = useState({
-    name: 'We Care PATHOLOGY LAB',
-    tagline: 'Accurate Results Timely Delivered',
-    address: '1283, BT Road near Maruti Marbal, Choti Bajariya, Garha Jabalpur (M.P.)',
-    phone: '9131709514',
-    customerSupport: '9131709514',
+    name: 'SATYAM PATHOLOGY CENTER',
+    tagline: 'Accurate | Caring | Instant',
+    address: 'Inside Gopi Medical, Sheetla Mai Chauraha, Jabalpur',
+    phone: '9165144073, 9340311506, 9516128613',
+    customerSupport: '9165144073',
     email: 'lp93403115@gmail.com',
-    doctorName: 'DR. R K SAGARIYA',
-    doctorDegree: 'MD PATHOLOGY',
-    disclaimer: 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.',
+    doctorName: 'Dr. KHUSHBOO SHAH',
+    doctorDegree: '(MD. Pathology)',
+    disclaimer: 'Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.',
     notes: 'Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.'
   });
   const [savingClinic, setSavingClinic] = useState(false);
