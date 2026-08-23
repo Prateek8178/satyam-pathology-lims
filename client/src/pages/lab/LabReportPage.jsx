@@ -844,6 +844,11 @@ export default function LabReportPage() {
     return () => document.getElementById('lab-rpt-print-css')?.remove();
   }, []);
 
+  // Load clinic settings, logo & signature on mount
+  useEffect(() => {
+    loadAssets();
+  }, [loadAssets]);
+
   // Load next incremental report number on mount
   useEffect(() => {
     if (!routeId) {
