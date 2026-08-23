@@ -235,14 +235,36 @@ const makeSTPPrefix = () => {
   return `STP-${dd}${mm}${n.getFullYear()}-`;
 };
 
+const getNowTimeAMPM = () => {
+  const n = new Date();
+  let h = n.getHours();
+  const m = String(n.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+};
+
+const formatAMPM = (timeStr) => {
+  if (!timeStr) return '';
+  if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+  let h = parseInt(parts[0], 10);
+  const m = parts[1].slice(0, 2);
+  if (isNaN(h)) return timeStr;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+};
+
 const initState = {
   patientId: '',
   meta: {
     reportNo: '',
     refDoctor: '',
     sampleDate: todayISO(),
-    sampleTime: new Date().toTimeString().slice(0, 5),
-    sampleType: '', // Optional, no hardcoded Blood
+    sampleTime: getNowTimeAMPM(),
+    sampleType: '',
     preparedBy: '',
   },
   sections: [],
@@ -261,6 +283,11 @@ function reducer(state, action) {
       return { ...state, showHeader: action.val };
     case 'SET_SECTIONS':
       return { ...state, sections: action.sections };
+    case 'SET_SECTION_TEST_ID':
+      return {
+        ...state,
+        sections: state.sections.map((s) => (s.id === action.sectionId ? { ...s, testId: action.testId } : s)),
+      };
     case 'ADD_SECTION': {
       if (state.sections.find((s) => s.testName === action.section.testName)) return state;
       const initialCalculatedRows = recalculateSection(action.section.rows, action.section.testName);
@@ -705,14 +732,14 @@ const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
               style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none' }}
             />
             <input
-              type="time"
               value={meta.sampleTime || ''}
               onChange={(e) => upMeta('sampleTime', e.target.value)}
-              style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none', width: '72px' }}
+              placeholder="10:30 AM"
+              style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none', width: '78px' }}
             />
           </span>
           <span className="print-only" style={{ display: 'none' }}>
-            {fmtDate(meta.sampleDate)}{meta.sampleTime ? ` ${fmtTime(meta.sampleTime)}` : ''}
+            {fmtDate(meta.sampleDate)} {formatAMPM(meta.sampleTime)}
           </span>
         </div>
       </div>
@@ -1026,7 +1053,15 @@ export default function LabReportPage() {
         comments: section.comments,
       });
       if (res.data?.success) {
-        toast.success(`✅ Saved "${section.testName}" template! Next reports will automatically use these parameters.`);
+        const savedTest = res.data?.data?.test;
+        if (savedTest?._id) {
+          dispatch({
+            type: 'SET_SECTION_TEST_ID',
+            sectionId: section.id,
+            testId: savedTest._id,
+          });
+        }
+        toast.success(`✅ Saved "${section.testName}" template (${res.data?.data?.parameters?.length || 0} parameters)! Next reports will automatically use these.`);
         loadAllTests();
       } else {
         toast.error(res.data?.message || 'Failed to update test template');
@@ -1036,21 +1071,10 @@ export default function LabReportPage() {
     }
   }, [loadAllTests]);
 
-  // Add row and auto-persist to template
+  // Add row
   const handleAddRow = useCallback((sectionId, isSubheader) => {
     dispatch({ type: 'ADD_ROW', sectionId, isSubheader });
-    // Also find section and sync to template in background
-    setTimeout(() => {
-      const sec = state.sections.find((s) => s.id === sectionId);
-      if (sec && sec.testId) {
-        api.put(`/tests/${sec.testId}/template`, {
-          testName: sec.testName,
-          rows: sec.rows,
-          comments: sec.comments,
-        }).catch(() => {});
-      }
-    }, 500);
-  }, [state.sections]);
+  }, []);
 
   // Save Report
   const saveReport = useCallback(async () => {
@@ -1078,8 +1102,8 @@ export default function LabReportPage() {
 
       // Auto-save templates for all sections so parameters are preserved for next patients
       for (const sec of state.sections) {
-        if (sec.testId) {
-          api.put(`/tests/${sec.testId}/template`, {
+        if (sec.testName && sec.rows?.length > 0) {
+          api.put(`/tests/${sec.testId || 'custom'}/template`, {
             testName: sec.testName,
             rows: sec.rows,
             comments: sec.comments,

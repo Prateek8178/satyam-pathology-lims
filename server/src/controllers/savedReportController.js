@@ -10,17 +10,23 @@ const getNextNumber = async (req, res) => {
     const dateStr = `${dd}${mm}${yyyy}`;
     const prefix = `STP-${dateStr}-`;
 
-    const lastReport = await SavedReport.findOne({}).sort({ createdAt: -1 });
-    let nextNum = 1;
-    if (lastReport && lastReport.reportNo) {
-      const match = lastReport.reportNo.match(/(\d+)$/);
-      if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
-      } else {
-        const total = await SavedReport.countDocuments();
-        nextNum = total + 1;
+    // Find all reports created today with this prefix
+    const todayReports = await SavedReport.find({
+      reportNo: { $regex: new RegExp(`^${prefix}`) }
+    }).select('reportNo');
+
+    let maxNum = 0;
+    if (todayReports && todayReports.length > 0) {
+      for (const r of todayReports) {
+        const match = r.reportNo && r.reportNo.match(new RegExp(`^${prefix}(\\d+)`));
+        if (match) {
+          const val = parseInt(match[1], 10);
+          if (val > maxNum) maxNum = val;
+        }
       }
     }
+
+    const nextNum = maxNum + 1;
     const reportNo = `${prefix}${String(nextNum).padStart(3, '0')}`;
     res.json({ success: true, nextNumber: reportNo, count: nextNum });
   } catch (err) {
@@ -65,19 +71,27 @@ const create = async (req, res) => {
     const dateStr = `${dd}${mm}${yyyy}`;
     const prefix  = `STP-${dateStr}-`;
 
-    let reportNo = req.body.reportNo;
-    if (!reportNo || reportNo.endsWith('-') || reportNo.trim() === '') {
-      const lastReport = await SavedReport.findOne({}).sort({ createdAt: -1 });
-      let nextNum = 1;
-      if (lastReport && lastReport.reportNo) {
-        const match = lastReport.reportNo.match(/(\d+)$/);
+    // Find all reports today to guarantee uniqueness
+    const todayReports = await SavedReport.find({
+      reportNo: { $regex: new RegExp(`^${prefix}`) }
+    }).select('reportNo');
+
+    let maxNum = 0;
+    if (todayReports && todayReports.length > 0) {
+      for (const r of todayReports) {
+        const match = r.reportNo && r.reportNo.match(new RegExp(`^${prefix}(\\d+)`));
         if (match) {
-          nextNum = parseInt(match[1], 10) + 1;
-        } else {
-          const total = await SavedReport.countDocuments();
-          nextNum = total + 1;
+          const val = parseInt(match[1], 10);
+          if (val > maxNum) maxNum = val;
         }
       }
+    }
+
+    let reportNo = req.body.reportNo ? req.body.reportNo.trim() : '';
+    // If not provided, or invalid format, or already exists, assign next unique number
+    const isExisting = reportNo ? await SavedReport.findOne({ reportNo }) : null;
+    if (!reportNo || reportNo.endsWith('-') || isExisting) {
+      const nextNum = maxNum + 1;
       reportNo = `${prefix}${String(nextNum).padStart(3, '0')}`;
     }
 
