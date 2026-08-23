@@ -1390,6 +1390,9 @@ export default function LabReportPage() {
             position: 'relative',
             padding: '24px 30px',
             boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
           }}
         >
           {/* Watermark Logo / Microscope */}
@@ -1410,8 +1413,8 @@ export default function LabReportPage() {
           </div>
 
           {/* Content Layer with Native Print Table Header/Footer Structure */}
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+          <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', flex: 1, height: '100%' }}>
               {/* THEAD: Repeats on the TOP of EVERY page in print */}
               <thead>
                 <tr>
@@ -1437,7 +1440,7 @@ export default function LabReportPage() {
               {/* TBODY: Test Content & Result Tables (Flows across pages) */}
               <tbody>
                 <tr>
-                  <td style={{ border: 'none', padding: '6px 0' }}>
+                  <td style={{ border: 'none', padding: '6px 0', verticalAlign: 'top', height: '100%' }}>
                     {state.sections.length === 0 ? (
                       <div className="no-print" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
                         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
@@ -1464,7 +1467,7 @@ export default function LabReportPage() {
               {/* TFOOT: Repeats on the BOTTOM of EVERY page in print */}
               <tfoot>
                 <tr>
-                  <td style={{ border: 'none', padding: 0 }}>
+                  <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
                     {state.showHeader && (
                       <ReportFooter
                         meta={state.meta}
