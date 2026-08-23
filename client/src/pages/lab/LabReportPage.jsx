@@ -844,10 +844,18 @@ export default function LabReportPage() {
     return () => document.getElementById('lab-rpt-print-css')?.remove();
   }, []);
 
-  // Load clinic settings on mount
+  // Load next incremental report number on mount
   useEffect(() => {
-    loadAssets();
-  }, [loadAssets]);
+    if (!routeId) {
+      api.get('/saved-reports/next-number')
+        .then((r) => {
+          if (r.data?.nextNumber) {
+            dispatch({ type: 'SET_META', payload: { reportNo: r.data.nextNumber } });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [routeId]);
 
   // Load all tests from database
   const loadAllTests = useCallback(() => {

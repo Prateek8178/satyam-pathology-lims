@@ -1,6 +1,33 @@
 const SavedReport = require('../models/SavedReport');
 const Patient = require('../models/Patient');
 
+const getNextNumber = async (req, res) => {
+  try {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const dateStr = `${dd}${mm}${yyyy}`;
+    const prefix = `STP-${dateStr}-`;
+
+    const lastReport = await SavedReport.findOne({}).sort({ createdAt: -1 });
+    let nextNum = 1;
+    if (lastReport && lastReport.reportNo) {
+      const match = lastReport.reportNo.match(/(\d+)$/);
+      if (match) {
+        nextNum = parseInt(match[1], 10) + 1;
+      } else {
+        const total = await SavedReport.countDocuments();
+        nextNum = total + 1;
+      }
+    }
+    const reportNo = `${prefix}${String(nextNum).padStart(3, '0')}`;
+    res.json({ success: true, nextNumber: reportNo, count: nextNum });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const getAll = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -31,22 +58,28 @@ const getAll = async (req, res) => {
 
 const create = async (req, res) => {
   try {
-    // Auto-generate STP-DDMMYYYY-NNN report number
     const now = new Date();
     const dd   = String(now.getDate()).padStart(2, '0');
     const mm   = String(now.getMonth() + 1).padStart(2, '0');
     const yyyy = now.getFullYear();
-    const dateStr = `${dd}${mm}${yyyy}`;          // e.g. 15082026
-    const prefix  = `STP-${dateStr}-`;             // e.g. STP-15082026-
+    const dateStr = `${dd}${mm}${yyyy}`;
+    const prefix  = `STP-${dateStr}-`;
 
-    // Count how many reports already exist today
-    const startOfDay = new Date(now); startOfDay.setHours(0,0,0,0);
-    const endOfDay   = new Date(now); endOfDay.setHours(23,59,59,999);
-    const countToday = await SavedReport.countDocuments({
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    });
-    const serial   = String(countToday + 1).padStart(3, '0'); // 001, 002, ...
-    const reportNo = prefix + serial;                          // STP-15082026-001
+    let reportNo = req.body.reportNo;
+    if (!reportNo || reportNo.endsWith('-') || reportNo.trim() === '') {
+      const lastReport = await SavedReport.findOne({}).sort({ createdAt: -1 });
+      let nextNum = 1;
+      if (lastReport && lastReport.reportNo) {
+        const match = lastReport.reportNo.match(/(\d+)$/);
+        if (match) {
+          nextNum = parseInt(match[1], 10) + 1;
+        } else {
+          const total = await SavedReport.countDocuments();
+          nextNum = total + 1;
+        }
+      }
+      reportNo = `${prefix}${String(nextNum).padStart(3, '0')}`;
+    }
 
     const { filterReportableSections } = require('../utils/formulaEngine');
     const cleanedSections = filterReportableSections(req.body.sections || []);
@@ -54,7 +87,7 @@ const create = async (req, res) => {
     const report = await SavedReport.create({
       ...req.body,
       sections: cleanedSections,
-      reportNo,          // override whatever client sent
+      reportNo,
       createdBy: req.user._id,
     });
     const populated = await report.populate('patient', 'fullName patientId age gender mobile');
@@ -85,4 +118,4 @@ const deleteReport = async (req, res) => {
   }
 };
 
-module.exports = { getAll, create, getById, deleteReport };
+module.exports = { getNextNumber, getAll, create, getById, deleteReport };
