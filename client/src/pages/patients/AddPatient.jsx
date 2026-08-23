@@ -45,6 +45,7 @@ export default function AddPatient() {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.fullName.trim()) { toast.error('Full name is required'); return; }
+    if (!form.gender) { toast.error('Gender is required for medical reference ranges'); return; }
     setSaving(true);
     try {
       const res = await api.post('/patients', {
@@ -52,7 +53,7 @@ export default function AddPatient() {
         fatherHusbandName: form.fatherHusbandName.trim() || undefined,
         dob: form.dob || undefined,
         age: form.age ? Number(form.age) : undefined,
-        gender: form.gender || undefined,
+        gender: form.gender,
         mobile: form.mobile.trim() || undefined,
         email: form.email.trim() || undefined,
         bloodGroup: form.bloodGroup || undefined,

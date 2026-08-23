@@ -14,8 +14,8 @@ import {
 
 /* ═══════════════════════════════════════════════════════════════
    PRINT STYLES (injected once into <head>)
-   Uses standard CSS paged-media & table repeating thead/tfoot
-   so that Header & Footer appear automatically on EVERY PAGE!
+   Maintains the EXACT old report layout, fonts, borders, alignments,
+   and ensures the Doctor Signature & Liability note repeats on every page!
 ═══════════════════════════════════════════════════════════════ */
 const PRINT_CSS = `
   @media print {
@@ -24,7 +24,7 @@ const PRINT_CSS = `
       margin: 8mm 10mm 10mm 10mm;
     }
 
-    /* Hide screen-only chrome */
+    /* Hide screen-only UI */
     body * { visibility: hidden !important; }
 
     /* Show print root */
@@ -85,20 +85,6 @@ const PRINT_CSS = `
       break-inside: avoid !important;
     }
 
-    /* Print table structure for repeating headers & footers */
-    .print-table-wrapper {
-      width: 100% !important;
-      border-collapse: collapse !important;
-    }
-
-    .print-table-header-space {
-      height: 10px;
-    }
-
-    .print-table-footer-space {
-      height: 10px;
-    }
-
     /* Watermark */
     .report-watermark {
       position: fixed !important;
@@ -119,14 +105,14 @@ const PRINT_CSS = `
 `;
 
 /* ═══════════════════════════════════════════════════════════════
-   HELPERS & REFERENCE RANGE CALCULATION
+   HELPERS & REFERENCE RANGE ENGINE (Gender & Age Aware)
 ═══════════════════════════════════════════════════════════════ */
 const todayISO = () => new Date().toISOString().split('T')[0];
 
 let _uid = 0;
 const uid = () => ++_uid;
 
-const calcFlag = (result, refRange, gender) => {
+const calcFlag = (result, refRange, gender, age) => {
   const num = parseNum(result);
   if (!result || num === null || !refRange) return null;
   let lo = null, hi = null;
@@ -145,15 +131,23 @@ const calcFlag = (result, refRange, gender) => {
   return null;
 };
 
-const refFromParam = (p, gender) => {
+const refFromParam = (p, gender = 'Male', age = 30) => {
   if (p.textRange) return p.textRange;
-  const isF = gender === 'Female';
-  if (p.femaleRange?.low != null && p.maleRange?.low != null) {
-    const rng = isF ? p.femaleRange : p.maleRange;
-    return `${rng.low} - ${rng.high}`;
+  const isChild = age != null && age < 18;
+  const isFemale = gender === 'Female';
+
+  if (isChild && p.childRange?.low != null && p.childRange?.high != null) {
+    return `${p.childRange.low} - ${p.childRange.high}`;
   }
-  if (p.maleRange?.low != null)   return `${p.maleRange.low} - ${p.maleRange.high}`;
-  if (p.femaleRange?.low != null) return `${p.femaleRange.low} - ${p.femaleRange.high}`;
+  if (isFemale && p.femaleRange?.low != null && p.femaleRange?.high != null) {
+    return `${p.femaleRange.low} - ${p.femaleRange.high}`;
+  }
+  if (p.maleRange?.low != null && p.maleRange?.high != null) {
+    return `${p.maleRange.low} - ${p.maleRange.high}`;
+  }
+  if (p.femaleRange?.low != null && p.femaleRange?.high != null) {
+    return `${p.femaleRange.low} - ${p.femaleRange.high}`;
+  }
   return '';
 };
 
@@ -201,6 +195,11 @@ function reducer(state, action) {
     }
     case 'REMOVE_SECTION':
       return { ...state, sections: state.sections.filter((s) => s.id !== action.id) };
+    case 'UPDATE_SECTION_META':
+      return {
+        ...state,
+        sections: state.sections.map((s) => (s.id === action.id ? { ...s, [action.field]: action.val } : s)),
+      };
     case 'ADD_ROW':
       return {
         ...state,
@@ -212,11 +211,12 @@ function reducer(state, action) {
                   ...s.rows,
                   {
                     id: uid(),
-                    param: '',
+                    param: action.isSubheader ? 'CATEGORY / SUBHEADER' : '',
                     result: '',
                     unit: '',
                     refRange: '',
-                    isSubheader: false,
+                    formula: '',
+                    isSubheader: action.isSubheader || false,
                   },
                 ],
               }
@@ -302,18 +302,26 @@ const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) =
 /* ═══════════════════════════════════════════════════════════════
    PARAMETER ROW COMPONENT
 ═══════════════════════════════════════════════════════════════ */
-const ParamRow = memo(({ row, sectionId, gender, dispatch, idx }) => {
+const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
   // If row is a subheader (e.g. "DIFFERENTIAL WBC COUNT", "BILLIRUBIN")
   if (row.isSubheader) {
     return (
       <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }} className="test-row-item">
-        <td colSpan={5} style={{ padding: '4px 8px', fontSize: '11px', fontWeight: '800', color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          {row.param}
+        <td colSpan={5} style={{ padding: '4px 8px' }}>
+          <Editable
+            value={row.param}
+            placeholder="CATEGORY / SUBHEADER TITLE"
+            style={{ fontWeight: '800', color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px', border: '1px dashed #93c5fd' }}
+            onChange={(e) =>
+              dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'param', value: e.target.value })
+            }
+          />
         </td>
         <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center' }}>
           <button
             onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
             style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}
+            title="Remove subheader"
           >
             ×
           </button>
@@ -323,7 +331,7 @@ const ParamRow = memo(({ row, sectionId, gender, dispatch, idx }) => {
   }
 
   const hasValue = isReportable(row.result);
-  const flag = calcFlag(row.result, row.refRange, gender);
+  const flag = calcFlag(row.result, row.refRange, gender, age);
   const isHigh = flag === 'High';
   const isLow = flag === 'Low';
   const isAbnormal = isHigh || isLow;
@@ -397,6 +405,7 @@ const ParamRow = memo(({ row, sectionId, gender, dispatch, idx }) => {
         <button
           onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
           style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px' }}
+          title="Delete row"
         >
           ×
         </button>
@@ -408,21 +417,41 @@ const ParamRow = memo(({ row, sectionId, gender, dispatch, idx }) => {
 /* ═══════════════════════════════════════════════════════════════
    TEST SECTION COMPONENT (Matching Sample Report)
 ═══════════════════════════════════════════════════════════════ */
-const TestSection = memo(({ section, gender, dispatch }) => {
+const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) => {
+  const [savingTpl, setSavingTpl] = useState(false);
+
+  const handleSaveTpl = async () => {
+    setSavingTpl(true);
+    await onSaveTemplate(section);
+    setSavingTpl(false);
+  };
+
   return (
     <div className="test-section-block" style={{ marginBottom: '14px' }}>
       {/* Test Title Bar */}
-      <div style={{ textAlign: 'center', margin: '6px 0 4px 0', borderBottom: '1.5px solid #1e3a5f', paddingBottom: '3px' }}>
+      <div style={{ textAlign: 'center', margin: '6px 0 4px 0', borderBottom: '1.5px solid #1e3a5f', paddingBottom: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
         <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', letterSpacing: '0.3px', textTransform: 'none' }}>
           {section.testName}
         </span>
-        <button
-          className="no-print"
-          onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
-          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', marginLeft: '10px' }}
-        >
-          [Delete Section]
-        </button>
+        
+        {/* Actions for Section Template Management */}
+        <div className="no-print" style={{ position: 'absolute', right: 0, display: 'flex', gap: '6px' }}>
+          <button
+            onClick={handleSaveTpl}
+            disabled={savingTpl}
+            style={{ fontSize: '10.5px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', fontWeight: '600' }}
+            title="Save these parameters and formulas into the Master Test Template for future reports"
+          >
+            {savingTpl ? 'Saving...' : '💾 Save as Test Template'}
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
+            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+            title="Remove from current report"
+          >
+            [Delete]
+          </button>
+        </div>
       </div>
 
       {/* Parameters Table */}
@@ -439,18 +468,24 @@ const TestSection = memo(({ section, gender, dispatch }) => {
         </thead>
         <tbody>
           {section.rows.map((row, i) => (
-            <ParamRow key={row.id} row={row} sectionId={section.id} gender={gender} dispatch={dispatch} idx={i} />
+            <ParamRow key={row.id} row={row} sectionId={section.id} gender={gender} age={age} dispatch={dispatch} idx={i} />
           ))}
         </tbody>
       </table>
 
-      {/* Screen Add Row button */}
-      <div className="no-print" style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
+      {/* Screen Add Row & Subheader buttons */}
+      <div className="no-print" style={{ marginTop: '5px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button
-          onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id })}
+          onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id, isSubheader: false })}
           style={{ fontSize: '11px', color: '#1e40af', background: 'none', border: '1px dashed #93c5fd', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}
         >
           + Add Parameter Row
+        </button>
+        <button
+          onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id, isSubheader: true })}
+          style={{ fontSize: '11px', color: '#0369a1', background: 'none', border: '1px dashed #7dd3fc', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}
+        >
+          + Add Category / Subheader
         </button>
       </div>
 
@@ -552,7 +587,6 @@ const PatientInfoSection = memo(({ patient, meta, dispatch, qrDataUrl }) => {
   const upMeta = useCallback((field, val) => dispatch({ type: 'SET_META', payload: { [field]: val } }), [dispatch]);
 
   const pName = patient?.fullName || '—';
-  const ageGender = `${patient?.age ? `${patient.age} Years` : '—'} / ${patient?.gender || '—'}`;
   const uhid = patient?.patientId || meta.reportNo || 'UHID 1742';
   const refBy = meta.refDoctor || patient?.referredByName || patient?.referringDoctor?.name || 'Self';
   const mobile = patient?.mobile;
@@ -579,7 +613,9 @@ const PatientInfoSection = memo(({ patient, meta, dispatch, qrDataUrl }) => {
           </div>
           <div style={{ marginTop: '1px' }}>
             <span style={{ fontWeight: '600' }}>Sex : </span>
-            {patient?.gender || '—'}
+            <span style={{ fontWeight: '700', color: patient?.gender ? '#0f172a' : '#dc2626' }}>
+              {patient?.gender || 'Missing (Required)'}
+            </span>
           </div>
           <div style={{ marginTop: '1px' }}>
             <span style={{ fontWeight: '600' }}>UHID : </span>
@@ -742,7 +778,7 @@ export default function LabReportPage() {
   }, [state.meta.reportNo]);
 
   // Load all tests from database
-  useEffect(() => {
+  const loadAllTests = useCallback(() => {
     api.get('/tests', { params: { limit: 300 } })
       .then((r) => {
         const t = r.data?.data || [];
@@ -752,6 +788,10 @@ export default function LabReportPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadAllTests();
+  }, [loadAllTests]);
 
   // Patient search
   useEffect(() => {
@@ -772,12 +812,11 @@ export default function LabReportPage() {
 
   const selectPatient = useCallback((p) => {
     setSelPatient(p);
-    setPatSearch(p.fullName);
     setShowPatDrop(false);
     dispatch({ type: 'SET_META', payload: { refDoctor: p.referredByName || p.referringDoctor?.name || 'Self' } });
   }, []);
 
-  // Add Test to Report
+  // Add Test to Report (PRESERVES search text as per Rule #11!)
   const addTest = useCallback(
     async (test) => {
       if (state.sections.find((s) => s.testName === test.testName)) {
@@ -789,14 +828,19 @@ export default function LabReportPage() {
         const r = await api.get(`/tests/${test._id}/parameters`);
         const params = r.data?.data || [];
         const gender = selPatient?.gender || 'Male';
+        const age = selPatient?.age || 30;
+
         const rows =
           params.length > 0
             ? params.map((p) => ({
                 id: uid(),
                 param: p.paramName,
+                paramCode: p.paramCode,
                 result: '',
                 unit: p.unit || '',
-                refRange: refFromParam(p, gender),
+                refRange: refFromParam(p, gender, age),
+                formula: p.formula || '',
+                dependencies: p.dependencies || [],
                 isSubheader: p.isSubheader || p.resultType === 'subheader',
               }))
             : [{ id: uid(), param: '', result: '', unit: '', refRange: '', isSubheader: false }];
@@ -811,7 +855,7 @@ export default function LabReportPage() {
             rows,
           },
         });
-        setTestSearch('');
+        // Notice: testSearch is intentionally PRESERVED (NOT cleared) as requested in Rule #11!
       } catch {
         toast.error('Could not load test parameters');
       } finally {
@@ -821,7 +865,7 @@ export default function LabReportPage() {
     [state.sections, selPatient]
   );
 
-  // Add custom test
+  // Add custom test (PRESERVES search text)
   const addCustomTest = useCallback(() => {
     const name = testSearch.trim();
     if (!name) {
@@ -838,13 +882,34 @@ export default function LabReportPage() {
         rows: [{ id: uid(), param: '', result: '', unit: '', refRange: '', isSubheader: false }],
       },
     });
-    setTestSearch('');
   }, [testSearch]);
+
+  // Save changes to Test Master Template (Section 6, 7, 8, 9)
+  const handleSaveTemplate = useCallback(async (section) => {
+    try {
+      const res = await api.put(`/tests/${section.testId || 'custom'}/template`, {
+        testName: section.testName,
+        rows: section.rows,
+        comments: section.comments,
+      });
+      if (res.data?.success) {
+        toast.success(`✅ Saved "${section.testName}" template! Next reports will automatically use these parameters.`);
+        loadAllTests();
+      }
+    } catch {
+      toast.error('Failed to update test template');
+    }
+  }, [loadAllTests]);
 
   // Save Report
   const saveReport = useCallback(async () => {
     if (!selPatient) {
       toast.error('Please select a patient');
+      return;
+    }
+    // Mandatory Gender Validation (Section 12 & 13)
+    if (!selPatient.gender) {
+      toast.error('Patient gender is required for accurate reference ranges. Please edit patient to add gender.');
       return;
     }
     if (state.sections.length === 0) {
@@ -853,7 +918,6 @@ export default function LabReportPage() {
     }
     setSaving(true);
     try {
-      // Filter only reportable rows before sending
       const reportableSections = filterReportableSections(state.sections);
       if (reportableSections.length === 0) {
         toast.error('Please enter at least one test result reading');
@@ -897,6 +961,10 @@ export default function LabReportPage() {
     async (withHeader) => {
       if (!selPatient) {
         toast.error('Please select a patient');
+        return;
+      }
+      if (!selPatient.gender) {
+        toast.error('Patient gender is required for accurate reference ranges. Please edit patient to add gender.');
         return;
       }
       if (state.sections.length === 0) {
@@ -976,7 +1044,7 @@ export default function LabReportPage() {
                     >
                       <div style={{ fontWeight: '700', color: '#1e40af' }}>{p.fullName}</div>
                       <div style={{ color: '#64748b', fontSize: '10px' }}>
-                        {p.patientId} · {p.age ? `${p.age}y` : ''} · {p.gender} {p.mobile ? `· ${p.mobile}` : ''}
+                        {p.patientId} · {p.age ? `${p.age}y` : ''} · <strong style={{ color: p.gender ? '#0f172a' : '#dc2626' }}>{p.gender || 'No Gender'}</strong> {p.mobile ? `· ${p.mobile}` : ''}
                       </div>
                     </div>
                   ))}
@@ -988,13 +1056,18 @@ export default function LabReportPage() {
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '6px 8px', marginTop: '6px', fontSize: '11px' }}>
                 <div style={{ fontWeight: '700', color: '#166534' }}>✓ {selPatient.fullName}</div>
                 <div style={{ color: '#475569', fontSize: '10px' }}>
-                  {selPatient.patientId} · {selPatient.age ? `${selPatient.age}y` : ''} · {selPatient.gender}
+                  {selPatient.patientId} · {selPatient.age ? `${selPatient.age}y` : ''} · <strong style={{ color: '#0f172a' }}>{selPatient.gender}</strong>
                 </div>
+                {!selPatient.gender && (
+                  <div style={{ color: '#dc2626', fontSize: '10px', marginTop: '2px', fontWeight: 'bold' }}>
+                    ⚠️ Missing Gender: Edit patient to add gender before printing.
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Test Selector */}
+          {/* Test Selector (Preserves Search Text on Click as requested!) */}
           <div>
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#334155', marginBottom: '4px', textTransform: 'uppercase' }}>Add Test</div>
             <input
@@ -1058,7 +1131,7 @@ export default function LabReportPage() {
           </div>
 
           <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '10px', color: '#64748b' }}>
-            💡 <strong>Smart Formulas:</strong> Values for Indirect Bilirubin, Globulin, A/G Ratio, VLDL, Non-HDL, Ratios, MCV/MCH, and eAG calculate automatically!
+            💡 <strong>Smart Master:</strong> You can add/remove rows or formulas in any test and click <em>"Save as Test Template"</em> to update it for all future reports!
           </div>
         </div>
 
@@ -1117,7 +1190,7 @@ export default function LabReportPage() {
         </div>
       </div>
 
-      {/* ── RIGHT: LIVE A4 REPORT PREVIEW ─────────────────────────── */}
+      {/* ── RIGHT: LIVE A4 REPORT PREVIEW (EXACT OLD REPORT FORMAT) ─────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
         
         {/* Preview Control Bar */}
@@ -1213,7 +1286,9 @@ export default function LabReportPage() {
                   key={sec.id}
                   section={sec}
                   gender={selPatient?.gender || 'Male'}
+                  age={selPatient?.age || 30}
                   dispatch={dispatch}
+                  onSaveTemplate={handleSaveTemplate}
                 />
               ))
             )}

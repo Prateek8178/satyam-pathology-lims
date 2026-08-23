@@ -108,5 +108,82 @@ const getParameters = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getCategories, getParameters, create, getById, update, addParameter, updateParameter, deleteParameter };
+// Sync whole template (save added/removed rows, updated ranges, display order to test master)
+const syncTemplate = async (req, res) => {
+  try {
+    const { testId } = req.params;
+    const { rows = [], testName, category, comments } = req.body;
 
+    let test;
+    if (testId && testId !== 'custom' && mongoose.Types.ObjectId.isValid(testId)) {
+      test = await Test.findById(testId);
+    }
+    if (!test && testName) {
+      const code = testName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || `TST${Date.now().toString().slice(-4)}`;
+      test = await Test.findOne({ testCode: code });
+      if (!test) {
+        test = await Test.create({
+          testName,
+          testCode: code,
+          category: category || 'General',
+          price: 200,
+          comments: comments || '',
+          isActive: true
+        });
+      }
+    }
+
+    if (!test) {
+      return res.status(400).json({ success: false, message: 'Invalid test identifier' });
+    }
+
+    // Deactivate previous parameters
+    await TestParameter.updateMany({ test: test._id }, { isActive: false });
+
+    // Insert or activate new rows in template
+    const newParams = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r.param && !r.paramName) continue;
+      const pName = r.param || r.paramName;
+      const pCode = (r.paramCode || pName).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || `P${i + 1}`;
+
+      const param = await TestParameter.create({
+        test: test._id,
+        paramName: pName,
+        paramCode: pCode,
+        unit: r.unit || '',
+        textRange: r.refRange || r.textRange || '',
+        isSubheader: r.isSubheader || false,
+        resultType: r.isSubheader ? 'subheader' : r.resultType || 'numeric',
+        formula: r.formula || '',
+        dependencies: r.dependencies || [],
+        isCalculated: !!r.formula || r.isCalculated || false,
+        displayOrder: i + 1,
+        isActive: true
+      });
+      newParams.push(param);
+    }
+
+    res.json({
+      success: true,
+      message: `Template for "${test.testName}" updated with ${newParams.length} parameters`,
+      data: { test, parameters: newParams }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = {
+  getAll,
+  getCategories,
+  getParameters,
+  create,
+  getById,
+  update,
+  addParameter,
+  updateParameter,
+  deleteParameter,
+  syncTemplate
+};

@@ -4,6 +4,7 @@ const testParameterSchema = new mongoose.Schema({
   test: { type: mongoose.Schema.Types.ObjectId, ref: 'Test', required: true },
   paramName: { type: String, required: true },
   paramCode: { type: String, required: true },
+  shortName: { type: String, default: '' },
   resultType: { type: String, enum: ['numeric', 'text', 'calculated', 'subheader'], default: 'numeric' },
   unit: { type: String, default: '' },
   textRange: { type: String, default: '' }, // For qualitative/custom ranges like "0.5 - 5.0", "Negative", "30 - 100"
@@ -26,7 +27,11 @@ const testParameterSchema = new mongoose.Schema({
   options: [{ type: String, comment: 'for text type options' }],
   isSubheader: { type: Boolean, default: false },
   group: { type: String, default: '' },
-  formula: { type: String, default: '' }, // e.g. "TBIL - DBIL"
+  formula: { type: String, default: '' }, // Expression like "TBIL - DBIL" or "(PCV * 10) / RBC"
+  dependencies: [{ type: String }],       // e.g. ['TBIL', 'DBIL']
+  isCalculated: { type: Boolean, default: false },
+  isRequired: { type: Boolean, default: false },
+  reportVisibility: { type: Boolean, default: true },
   interpretation: { type: String, default: '' },
   comments: { type: String, default: '' },
   method: { type: String, default: '' },

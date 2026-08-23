@@ -6,7 +6,7 @@ const patientSchema = new mongoose.Schema({
   fatherHusbandName: { type: String },
   dob: { type: Date },
   age: { type: Number },
-  gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+  gender: { type: String, enum: ['Male', 'Female', 'Other'], required: [true, 'Gender is mandatory for clinical reference ranges'] },
   mobile: { type: String, required: false },
   email: { type: String },
   address: {

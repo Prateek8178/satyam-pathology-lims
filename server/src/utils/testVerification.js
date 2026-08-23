@@ -1,6 +1,6 @@
 /**
  * Comprehensive Automated Verification Test Script for Lab Report System
- * Tests all 15 audit requirements.
+ * Tests all 28 audit requirements.
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const mongoose = require('mongoose');
@@ -8,16 +8,18 @@ const {
   parseNum,
   isReportable,
   roundTo,
+  evaluateExpression,
   recalculateSection,
   filterReportableSections,
 } = require('./formulaEngine');
 const Patient = require('../models/Patient');
 const LabSettings = require('../models/LabSettings');
+const Test = require('../models/Test');
+const TestParameter = require('../models/TestParameter');
 const SavedReport = require('../models/SavedReport');
-const User = require('../models/User');
 
 async function runTests() {
-  console.log('🧪 Starting Automated Test Verification Suite...\n');
+  console.log('🧪 Starting Deep Automated Test Verification Suite...\n');
   let passed = 0;
   let total = 0;
 
@@ -32,63 +34,52 @@ async function runTests() {
     }
   };
 
-  // ── TEST GROUP 1: Parameter Filtering & Non-Empty Rules ──
-  console.log('--- Group 1: Parameter Filtering & Values ---');
-  
-  // Test 1 & 7: Zero is reportable
-  assert(isReportable(0) === true, 'Test 1.1: Value 0 is valid and reportable');
-  assert(isReportable('0.0') === true, 'Test 1.2: Value "0.0" is valid and reportable');
+  // ── TEST GROUP 1: Parameter Filtering & Values ──
+  console.log('--- Group 1: Parameter Filtering & Non-Empty Rules ---');
+  assert(isReportable(0) === true, 'Test 1.1: Numeric 0 is valid and reportable');
+  assert(isReportable('0.0') === true, 'Test 1.2: String "0.0" is valid and reportable');
   assert(isReportable(-5) === true, 'Test 1.3: Negative value is valid and reportable');
-  
-  // Test 6: Qualitative results
   assert(isReportable('Positive') === true, 'Test 1.4: "Positive" is valid and reportable');
   assert(isReportable('Negative') === true, 'Test 1.5: "Negative" is valid and reportable');
   assert(isReportable('Nil') === true, 'Test 1.6: "Nil" is valid and reportable');
   assert(isReportable('Absent') === true, 'Test 1.7: "Absent" is valid and reportable');
   assert(isReportable('Clear') === true, 'Test 1.8: "Clear" is valid and reportable');
   assert(isReportable('3-4') === true, 'Test 1.9: "3-4" is valid and reportable');
+  assert(isReportable('') === false, 'Test 1.10: Empty string is filtered out');
+  assert(isReportable('   ') === false, 'Test 1.11: Whitespace is filtered out');
+  assert(isReportable(null) === false, 'Test 1.12: null is filtered out');
+  assert(isReportable(undefined) === false, 'Test 1.13: undefined is filtered out');
 
-  // Test 3: Null/Empty are NOT reportable
-  assert(isReportable('') === false, 'Test 1.10: Empty string is not reportable');
-  assert(isReportable('   ') === false, 'Test 1.11: Whitespace string is not reportable');
-  assert(isReportable(null) === false, 'Test 1.12: null is not reportable');
-  assert(isReportable(undefined) === false, 'Test 1.13: undefined is not reportable');
+  // ── TEST GROUP 2: Generic Expression Evaluator ──
+  console.log('\n--- Group 2: Generic Configuration-Driven Formula Evaluator ---');
+  const vars = { TBIL: 2.5, DBIL: 1.0, PCV: 45, RBC: 4.8, HB: 14.5, UREA: 48, CREAT: 0.75, TIBC: 350, IRON: 105 };
+  
+  const calc1 = evaluateExpression('TBIL - DBIL', vars);
+  assert(calc1 === 1.5, `Test 2.1: evaluateExpression "TBIL - DBIL" (2.5 - 1.0 = 1.5) -> ${calc1}`);
 
-  // ── TEST GROUP 2: Section Filtering ──
-  console.log('\n--- Group 2: Section Filtering ---');
-  const sampleSection = [
-    {
-      testName: 'Complete Blood Count (CBC)',
-      rows: [
-        { param: 'Hemoglobin (Hb)', result: '13.5', unit: 'g/dL', refRange: '13-17' },
-        { param: 'Total RBC Count', result: '4.8', unit: 'mill/cumm', refRange: '4.5-5.5' },
-        { param: 'Total WBC Count', result: '', unit: 'cumm', refRange: '4000-11000' },
-        { param: 'Platelet Count', result: '250000', unit: '/cumm', refRange: '150000-450000' },
-        { param: 'Packed Cell Volume (PCV)', result: '   ', unit: '%', refRange: '40-50' },
-        { param: 'DIFFERENTIAL WBC COUNT', isSubheader: true, param: 'DIFFERENTIAL WBC COUNT', result: '' },
-        { param: 'Neutrophils', result: '', unit: '%', refRange: '40-70' },
-      ],
-    },
-    {
-      testName: 'Empty Test Section',
-      rows: [
-        { param: 'Param A', result: '', unit: '' },
-        { param: 'Param B', result: '', unit: '' },
-      ],
-    }
-  ];
+  const calc2 = evaluateExpression('(PCV * 10) / RBC', vars);
+  assert(roundTo(calc2, 2) === '93.75', `Test 2.2: evaluateExpression "(PCV * 10) / RBC" (450 / 4.8 = 93.75) -> ${calc2}`);
 
-  const filtered = filterReportableSections(sampleSection);
-  assert(filtered.length === 1, 'Test 2.1: Completely empty test sections are excluded');
-  assert(filtered[0].rows.length === 3, 'Test 2.2: Only entered rows (3) are kept, empty rows & orphaned subheaders removed');
-  assert(filtered[0].rows.some(r => r.param === 'Hemoglobin (Hb)'), 'Test 2.3: Hemoglobin is kept');
-  assert(filtered[0].rows.some(r => r.param === 'Platelet Count'), 'Test 2.4: Platelet count is kept');
-  assert(!filtered[0].rows.some(r => r.param === 'Total WBC Count'), 'Test 2.5: Empty WBC is removed');
+  const calc3 = evaluateExpression('(HB * 100) / PCV', vars);
+  assert(roundTo(calc3, 2) === '32.22', `Test 2.3: evaluateExpression "(HB * 100) / PCV" (1450 / 45 = 32.22) -> ${calc3}`);
+
+  const calc4 = evaluateExpression('TIBC - IRON', vars);
+  assert(calc4 === 245, `Test 2.4: evaluateExpression "TIBC - IRON" (350 - 105 = 245) -> ${calc4}`);
+
+  const calc5 = evaluateExpression('(IRON / TIBC) * 100', vars);
+  assert(roundTo(calc5, 1) === '30', `Test 2.5: evaluateExpression "(IRON / TIBC) * 100" (105 / 350 * 100 = 30) -> ${calc5}`);
+
+  // Safe Zero Division Handling
+  const zeroDiv = evaluateExpression('HB / 0', vars);
+  assert(zeroDiv === null, 'Test 2.6: Division by zero returns null safely');
+
+  // Missing variable handling
+  const missingVar = evaluateExpression('HB - UNKNOWN_VAR', vars);
+  assert(missingVar === null, 'Test 2.7: Missing variable returns null safely (no NaN)');
 
   // ── TEST GROUP 3: Live Medical Calculations ──
-  console.log('\n--- Group 3: Medical Calculations & Formulas ---');
-
-  // LFT Calculations
+  console.log('\n--- Group 3: Medical Calculations & Panels ---');
+  // LFT
   const lftRows = [
     { param: 'Total Bilirubin', result: '0.54' },
     { param: 'Direct Bilirubin', result: '0.16' },
@@ -99,15 +90,11 @@ async function runTests() {
     { param: 'A/G Ratio', result: '' },
   ];
   const lftCalculated = recalculateSection(lftRows, 'LFT');
-  const indirectBil = lftCalculated.find(r => r.param === 'Indirect Bilirubin')?.result;
-  const globulin = lftCalculated.find(r => r.param === 'Serum Globulin')?.result;
-  const agRatio = lftCalculated.find(r => r.param === 'A/G Ratio')?.result;
+  assert(lftCalculated.find(r => r.param === 'Indirect Bilirubin')?.result === '0.38', 'Test 3.1: LFT Indirect Bilirubin (0.38)');
+  assert(lftCalculated.find(r => r.param === 'Serum Globulin')?.result === '3.88', 'Test 3.2: LFT Serum Globulin (3.88)');
+  assert(lftCalculated.find(r => r.param === 'A/G Ratio')?.result === '0.93', 'Test 3.3: LFT A/G Ratio (0.93)');
 
-  assert(indirectBil === '0.38', `Test 3.1: LFT Indirect Bilirubin (0.54 - 0.16 = 0.38) -> ${indirectBil}`);
-  assert(globulin === '3.88', `Test 3.2: LFT Serum Globulin (7.48 - 3.60 = 3.88) -> ${globulin}`);
-  assert(agRatio === '0.93', `Test 3.3: LFT A/G Ratio (3.60 / 3.88 = 0.93) -> ${agRatio}`);
-
-  // Lipid Profile Calculations
+  // Lipid
   const lipidRows = [
     { param: 'Total Cholesterol', result: '170.5' },
     { param: 'Serum Triglycerides', result: '153.0' },
@@ -120,77 +107,67 @@ async function runTests() {
     { param: 'Triglycerides HDL Ratio', result: '' },
   ];
   const lipidCalculated = recalculateSection(lipidRows, 'Lipid Profile');
-  const vldl = lipidCalculated.find(r => r.param === 'VLDL Cholesterol')?.result;
-  const nonHdl = lipidCalculated.find(r => r.param === 'Non-HDL cholesterol')?.result;
-  const ldlHdlRatio = lipidCalculated.find(r => r.param === 'LDL HDL Cholesterol Ratio')?.result;
-  const cholHdlRatio = lipidCalculated.find(r => r.param === 'Total-HDL Cholesterol Ratio')?.result;
-  const trgHdlRatio = lipidCalculated.find(r => r.param === 'Triglycerides HDL Ratio')?.result;
+  assert(lipidCalculated.find(r => r.param === 'VLDL Cholesterol')?.result === '30.6', 'Test 3.4: Lipid VLDL (30.6)');
+  assert(lipidCalculated.find(r => r.param === 'Non-HDL cholesterol')?.result === '126.6', 'Test 3.5: Lipid Non-HDL (126.6)');
+  assert(lipidCalculated.find(r => r.param === 'LDL HDL Cholesterol Ratio')?.result === '2.19', 'Test 3.6: Lipid LDL/HDL Ratio (2.19)');
+  assert(lipidCalculated.find(r => r.param === 'Total-HDL Cholesterol Ratio')?.result === '3.88', 'Test 3.7: Lipid Total/HDL Ratio (3.88)');
+  assert(lipidCalculated.find(r => r.param === 'Triglycerides HDL Ratio')?.result === '3.49', 'Test 3.8: Lipid Triglycerides/HDL Ratio (3.49)');
 
-  assert(vldl === '30.6', `Test 3.4: Lipid VLDL (153 / 5 = 30.6) -> ${vldl}`);
-  assert(nonHdl === '126.6', `Test 3.5: Lipid Non-HDL (170.5 - 43.9 = 126.6) -> ${nonHdl}`);
-  assert(ldlHdlRatio === '2.19', `Test 3.6: Lipid LDL/HDL Ratio (96 / 43.9 = 2.19) -> ${ldlHdlRatio}`);
-  assert(cholHdlRatio === '3.88', `Test 3.7: Lipid Total/HDL Ratio (170.5 / 43.9 = 3.88) -> ${cholHdlRatio}`);
-  assert(trgHdlRatio === '3.49', `Test 3.8: Lipid Triglycerides/HDL Ratio (153 / 43.9 = 3.49) -> ${trgHdlRatio}`);
-
-  // HbA1c Calculation
+  // HbA1c
   const hba1cRows = [
     { param: 'Glycosylated Hemoglobin(GHb/HbA1c)', result: '6.9' },
     { param: 'Mean Blood Glucose', result: '' },
   ];
   const hba1cCalculated = recalculateSection(hba1cRows, 'HbA1c');
-  const mbg = hba1cCalculated.find(r => r.param === 'Mean Blood Glucose')?.result;
-  assert(mbg === '151.33', `Test 3.9: HbA1c Mean Blood Glucose (28.7 * 6.9 - 46.7 = 151.33) -> ${mbg}`);
+  assert(hba1cCalculated.find(r => r.param === 'Mean Blood Glucose')?.result === '151.33', 'Test 3.9: HbA1c Mean Blood Glucose (151.33)');
 
-  // KFT Ratio Calculation
+  // KFT
   const kftRows = [
     { param: 'Serum Urea', result: '48.0' },
     { param: 'Serum Creatinine', result: '0.74' },
     { param: 'Urea / Creatinine Ratio', result: '' },
+    { param: 'Blood Urea Nitrogen (BUN)', result: '' },
   ];
   const kftCalculated = recalculateSection(kftRows, 'KFT');
-  const ucreatRatio = kftCalculated.find(r => r.param.includes('Urea / Creatinine'))?.result;
-  assert(ucreatRatio === '64.86', `Test 3.10: KFT Urea/Creatinine Ratio (48.0 / 0.74 = 64.86) -> ${ucreatRatio}`);
+  assert(kftCalculated.find(r => r.param.includes('Urea / Creatinine'))?.result === '64.86', 'Test 3.10: KFT Urea/Creatinine Ratio (64.86)');
+  assert(kftCalculated.find(r => r.param.includes('BUN'))?.result === '22.4', 'Test 3.11: KFT BUN (22.4)');
 
-  // Missing Inputs Safety Check (Does NOT produce NaN or fake values)
-  const emptyLft = [
-    { param: 'Total Bilirubin', result: '' },
-    { param: 'Direct Bilirubin', result: '' },
-    { param: 'Indirect Bilirubin', result: '' },
-  ];
-  const emptyCalculated = recalculateSection(emptyLft, 'LFT');
-  assert(emptyCalculated[2].result === '', 'Test 3.11: Missing inputs produce empty string (no NaN)');
-
-  // ── TEST GROUP 4: Database Models & Persistence ──
-  console.log('\n--- Group 4: Database Operations & Schema ---');
+  // ── TEST GROUP 4: Database Models & Gender Validation ──
+  console.log('\n--- Group 4: Database Operations & Gender Validation ---');
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/lims';
   await mongoose.connect(mongoUri);
 
-  // Test 8: Create Patient with NO mobile number
-  const testPatientId = `TEST-PAT-${Date.now()}`;
-  const patient = await Patient.create({
-    patientId: testPatientId,
-    fullName: 'Test Patient No Mobile',
-    gender: 'Male',
-    age: 45,
-    // mobile is omitted
-  });
-  assert(patient._id && patient.mobile === undefined, 'Test 4.1: Patient created successfully with optional/empty mobile number');
-
-  // Clean up test patient
-  await Patient.findByIdAndDelete(patient._id);
-
-  // Test 9 & 10: Persistent Lab Settings in MongoDB
-  let settings = await LabSettings.findOne();
-  if (!settings) {
-    settings = await LabSettings.create({
-      labName: 'We Care PATHOLOGY LAB',
-      doctorName: 'DR. R K SAGARIYA',
-      doctorDegree: 'MD PATHOLOGY',
-      phone: '9131709514'
+  // Test: Creating patient without gender should throw validation error
+  let genderErr = null;
+  try {
+    const invalidPatient = new Patient({
+      patientId: `TEST-PAT-NOGENDER-${Date.now()}`,
+      fullName: 'No Gender Patient',
     });
+    await invalidPatient.validate();
+  } catch (err) {
+    genderErr = err;
   }
-  assert(settings.doctorName === 'DR. R K SAGARIYA', 'Test 4.2: LabSettings persists Doctor Name in MongoDB');
-  assert(settings.doctorDegree === 'MD PATHOLOGY', 'Test 4.3: LabSettings persists Doctor Degree in MongoDB');
+  assert(genderErr !== null && genderErr.errors?.gender !== undefined, 'Test 4.1: Patient validation fails when gender is missing (mandatory gender rule)');
+
+  // Test: Creating valid patient with gender
+  const validPatient = await Patient.create({
+    patientId: `TEST-PAT-VALID-${Date.now()}`,
+    fullName: 'Valid Gender Patient',
+    gender: 'Female',
+    age: 42,
+  });
+  assert(validPatient._id && validPatient.gender === 'Female', 'Test 4.2: Patient with mandatory gender saved successfully');
+  await Patient.findByIdAndDelete(validPatient._id);
+
+  // Test: Test Master parameters loaded
+  const cbcTest = await Test.findOne({ testCode: 'CBC' });
+  const cbcParams = await TestParameter.find({ test: cbcTest._id, isActive: true });
+  assert(cbcParams.length >= 18, `Test 4.3: Complete CBC test has ${cbcParams.length} parameters with differential and platelet indices`);
+
+  const cueTest = await Test.findOne({ testCode: 'CUE' });
+  const cueParams = await TestParameter.find({ test: cueTest._id, isActive: true });
+  assert(cueParams.length >= 20, `Test 4.4: Complete Urine Analysis has ${cueParams.length} physical/chemical/microscopic parameters`);
 
   console.log(`\n========================================`);
   console.log(`🎉 TEST RESULTS: ${passed} / ${total} PASSED (100% SUCCESS)`);

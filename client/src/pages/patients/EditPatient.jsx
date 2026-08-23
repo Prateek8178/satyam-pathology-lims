@@ -75,6 +75,7 @@ export default function EditPatient() {
     e.preventDefault();
     const errs = {};
     if (!form.fullName.trim()) errs.fullName = 'Full name is required';
+    if (!form.gender) errs.gender = 'Gender is required for medical reference ranges';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setSaving(true);
