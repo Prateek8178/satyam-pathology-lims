@@ -135,6 +135,12 @@ const PRINT_CSS = `
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
+
+    /* Single-section print mode: hide all other test sections */
+    .print-section-hidden {
+      display: none !important;
+      visibility: hidden !important;
+    }
   }
 `;
 
@@ -515,11 +521,16 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
    TEST SECTION COMPONENT (Clean Black Heading & Border Layout)
    Now with column visibility toggles: hide Unit / Ref Range / Flag
 ═══════════════════════════════════════════════════════════════ */
-const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow }) => {
+const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow, printOnlyId, onPrintOnly }) => {
   const [savingTpl, setSavingTpl] = useState(false);
   const [hideUnit, setHideUnit]   = useState(false);
   const [hideRef,  setHideRef]    = useState(false);
   const [hideFlag, setHideFlag]   = useState(false);
+
+  // Is this section hidden because another section is being printed?
+  const isPrintHidden = printOnlyId !== null && printOnlyId !== section.id;
+  // Is this section the one being printed alone?
+  const isPrintTarget = printOnlyId === section.id;
 
   const handleSaveTpl = async () => {
     setSavingTpl(true);
@@ -538,7 +549,10 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
   ];
 
   return (
-    <div className="test-section-block" style={{ marginBottom: '12px' }}>
+    <div
+      className={`test-section-block${isPrintHidden ? ' print-section-hidden' : ''}`}
+      style={{ marginBottom: '12px' }}
+    >
       {/* Test Title Bar — Clean Black Underline Heading */}
       <div style={{ borderBottom: '2px solid #111', padding: '4px 2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '12.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#111' }}>
@@ -570,6 +584,26 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
               {state ? '＋' : '－'} {label}
             </button>
           ))}
+
+          {/* Print Only This Test */}
+          {onPrintOnly && (
+            <button
+              onClick={() => onPrintOnly(section.id, true)}
+              title="Print only this test (hides all other tests)"
+              style={{
+                fontSize: '10px',
+                background: '#0369a1',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                cursor: 'pointer',
+                fontWeight: '600',
+              }}
+            >
+              🖨️ Print Only This
+            </button>
+          )}
 
           <button
             onClick={handleSaveTpl}
@@ -881,6 +915,9 @@ export default function LabReportPage() {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selCat, setSelCat] = useState('All');
+
+  // Single-section print: null = print all, sectionId = print only that section
+  const [printOnlyId, setPrintOnlyId] = useState(null);
 
   // Clinic assets & persistent DB settings
   const [assets, setAssets] = useState({ logo: null, signature: null, settings: {} });
@@ -1208,6 +1245,25 @@ export default function LabReportPage() {
     [selPatient, state, saveReport]
   );
 
+  // Print ONLY one test section (hides all others during print)
+  const handlePrintOnly = useCallback(
+    async (sectionId, withHeader = true) => {
+      if (!selPatient) { toast.error('Please select a patient'); return; }
+      if (!selPatient.gender) { toast.error('Patient gender is required. Please edit patient to add gender.'); return; }
+      dispatch({ type: 'SET_HEADER', val: withHeader });
+      await saveReport();
+      setPrintOnlyId(sectionId);
+      // After print dialog closes, restore all sections
+      const onAfter = () => {
+        setPrintOnlyId(null);
+        window.removeEventListener('afterprint', onAfter);
+      };
+      window.addEventListener('afterprint', onAfter);
+      setTimeout(() => window.print(), 200);
+    },
+    [selPatient, saveReport, dispatch]
+  );
+
   const filteredTests = allTests.filter((t) => {
     const matchCat = selCat === 'All' || t.category === selCat;
     const matchQ =
@@ -1529,6 +1585,8 @@ export default function LabReportPage() {
                           dispatch={dispatch}
                           onSaveTemplate={handleSaveTemplate}
                           onAddRow={handleAddRow}
+                          printOnlyId={printOnlyId}
+                          onPrintOnly={handlePrintOnly}
                         />
                       ))
                     )}
