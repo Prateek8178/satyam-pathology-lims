@@ -1534,8 +1534,8 @@ export default function LabReportPage() {
             justifyContent: 'space-between',
           }}
         >
-          {/* Watermark Logo / Microscope */}
-          <div className="report-watermark" style={{
+          {/* Watermark Logo / Microscope — hidden when printing single test */}
+          <div className={`report-watermark${printOnlyId !== null ? ' print-section-hidden' : ''}`} style={{
             position: 'absolute',
             top: '50%',
             left: '50%',
@@ -1558,20 +1558,23 @@ export default function LabReportPage() {
               <thead>
                 <tr>
                   <td style={{ border: 'none', padding: 0 }}>
-                    {state.showHeader && (
-                      <LabHeader logoUrl={assets.logo} settings={assets.settings} />
-                    )}
-                    {selPatient ? (
-                      <PatientInfoSection
-                        patient={selPatient}
-                        meta={state.meta}
-                        dispatch={dispatch}
-                      />
-                    ) : (
-                      <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                        👈 Please select a patient from the left panel
-                      </div>
-                    )}
+                    {/* When printing only one test, hide the header+patient info block */}
+                    <div className={printOnlyId !== null ? 'print-section-hidden' : ''}>
+                      {state.showHeader && (
+                        <LabHeader logoUrl={assets.logo} settings={assets.settings} />
+                      )}
+                      {selPatient ? (
+                        <PatientInfoSection
+                          patient={selPatient}
+                          meta={state.meta}
+                          dispatch={dispatch}
+                        />
+                      ) : (
+                        <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
+                          👈 Please select a patient from the left panel
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               </thead>
@@ -1609,14 +1612,17 @@ export default function LabReportPage() {
               <tfoot>
                 <tr>
                   <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
-                    {state.showHeader && (
-                      <ReportFooter
-                        meta={state.meta}
-                        dispatch={dispatch}
-                        signatureUrl={assets.signature}
-                        settings={assets.settings}
-                      />
-                    )}
+                    {/* Hide footer when printing only one test */}
+                    <div className={printOnlyId !== null ? 'print-section-hidden' : ''}>
+                      {state.showHeader && (
+                        <ReportFooter
+                          meta={state.meta}
+                          dispatch={dispatch}
+                          signatureUrl={assets.signature}
+                          settings={assets.settings}
+                        />
+                      )}
+                    </div>
                   </td>
                 </tr>
               </tfoot>
