@@ -1,21 +1,21 @@
 const mongoose = require('mongoose');
 
 const labSettingsSchema = new mongoose.Schema({
-  labName: { type: String, default: 'We Care PATHOLOGY LAB' },
-  tagline: { type: String, default: 'Accurate Results Timely Delivered' },
+  labName: { type: String, default: 'SATYAM PATHOLOGY CENTER' },
+  tagline: { type: String, default: 'Accurate | Caring | Instant' },
   logo: { type: String, default: null }, // Base64 data URL or remote URL
   signature: { type: String, default: null }, // Base64 data URL or remote URL
-  address: { type: String, default: '1283, BT Road near Maruti Marbal, Choti Bajariya, Garha Jabalpur (M.P.)' },
-  phone: { type: String, default: '9131709514' },
-  customerSupport: { type: String, default: '9131709514' },
+  address: { type: String, default: 'Inside Gopi Medical, Sheetla Mai Chauraha, Jabalpur' },
+  phone: { type: String, default: '9165144073, 9340311506, 9516128613' },
+  customerSupport: { type: String, default: '9165144073' },
   email: { type: String, default: 'lp93403115@gmail.com' },
-  doctorName: { type: String, default: 'DR. R K SAGARIYA' },
-  doctorDegree: { type: String, default: 'MD PATHOLOGY' },
-  registrationInfo: { type: String, default: 'NABL Accredited Diagnostic Center' },
+  doctorName: { type: String, default: 'Dr. KHUSHBOO SHAH' },
+  doctorDegree: { type: String, default: '(MD. Pathology)' },
+  registrationInfo: { type: String, default: 'Accurate | Caring | Instant' },
   footer: { type: String, default: 'Results are valid for clinical correlation.' },
   disclaimer: {
     type: String,
-    default: 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.'
+    default: 'Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.'
   },
   notes: {
     type: String,

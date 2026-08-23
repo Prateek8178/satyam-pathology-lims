@@ -138,11 +138,23 @@ const syncTemplate = async (req, res) => {
       test = await Test.findById(testId);
     }
     if (!test && testName) {
-      const code = testName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || `TST${Date.now().toString().slice(-4)}`;
-      test = await Test.findOne({ $or: [{ testName: { $regex: new RegExp(`^${testName.trim()}$`, 'i') } }, { testCode: code }] });
+      const trimmedName = testName.trim();
+      // Try to find existing test by name first (case-insensitive)
+      test = await Test.findOne({ testName: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
       if (!test) {
+        // Generate a unique code — retry with timestamp suffix on collision
+        const baseCode = trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || `TST${Date.now().toString().slice(-4)}`;
+        let code = baseCode;
+        let attempts = 0;
+        while (attempts < 5) {
+          const existing = await Test.findOne({ testCode: code });
+          if (!existing) break;
+          // Append random suffix to make it unique
+          code = `${baseCode.slice(0, 5)}${Date.now().toString().slice(-3)}`;
+          attempts++;
+        }
         test = await Test.create({
-          testName: testName.trim(),
+          testName: trimmedName,
           testCode: code,
           category: category || 'General',
           price: 200,
@@ -165,6 +177,7 @@ const syncTemplate = async (req, res) => {
       const r = rows[i];
       if (!r.param && !r.paramName) continue;
       const pName = (r.param || r.paramName).trim();
+      if (!pName) continue;
       const pCode = (r.paramCode || pName).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || `P${i + 1}`;
 
       const param = await TestParameter.create({
@@ -177,7 +190,7 @@ const syncTemplate = async (req, res) => {
         resultType: r.isSubheader ? 'subheader' : r.resultType || 'numeric',
         formula: r.formula || '',
         dependencies: r.dependencies || [],
-        isCalculated: !!r.formula || r.isCalculated || false,
+        isCalculated: !!(r.formula) || r.isCalculated || false,
         displayOrder: i + 1,
         isActive: true
       });

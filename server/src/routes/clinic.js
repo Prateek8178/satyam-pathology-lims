@@ -26,15 +26,15 @@ const getOrCreateSettings = async () => {
   let settings = await LabSettings.findOne();
   if (!settings) {
     settings = await LabSettings.create({
-      labName: 'We Care PATHOLOGY LAB',
-      tagline: 'Accurate Results Timely Delivered',
-      address: '1283, BT Road near Maruti Marbal, Choti Bajariya, Garha Jabalpur (M.P.)',
-      phone: '9131709514',
-      customerSupport: '9131709514',
+      labName: 'SATYAM PATHOLOGY CENTER',
+      tagline: 'Accurate | Caring | Instant',
+      address: 'Inside Gopi Medical, Sheetla Mai Chauraha, Jabalpur',
+      phone: '9165144073, 9340311506, 9516128613',
+      customerSupport: '9165144073',
       email: 'lp93403115@gmail.com',
-      doctorName: 'DR. R K SAGARIYA',
-      doctorDegree: 'MD PATHOLOGY',
-      disclaimer: 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.',
+      doctorName: 'Dr. KHUSHBOO SHAH',
+      doctorDegree: '(MD. Pathology)',
+      disclaimer: 'Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.',
       notes: 'Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.'
     });
   }

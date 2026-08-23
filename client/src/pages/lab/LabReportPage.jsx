@@ -356,9 +356,8 @@ function reducer(state, action) {
         ...initState,
         meta: {
           ...initState.meta,
-          reportNo: makeSTPPrefix(),
           sampleDate: todayISO(),
-          sampleTime: new Date().toTimeString().slice(0, 5),
+          sampleTime: getNowTimeAMPM(),
         },
       };
     default:
@@ -812,16 +811,11 @@ export default function LabReportPage() {
   const { user } = useAuth();
 
   const [state, dispatch] = useReducer(reducer, null, () => {
-    const now = new Date();
-    const dd = String(now.getDate()).padStart(2, '0');
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const yyyy = now.getFullYear();
     return {
       ...initState,
       meta: {
         ...initState.meta,
-        reportNo: `STP-${dd}${mm}${yyyy}-`,
-        sampleTime: now.toTimeString().slice(0, 5),
+        sampleTime: getNowTimeAMPM(),
       },
     };
   });
@@ -929,7 +923,7 @@ export default function LabReportPage() {
                 reportNo: report.reportNo || '',
                 refDoctor: report.refDoctor || '',
                 sampleDate: report.sampleDate ? report.sampleDate.slice(0, 10) : todayISO(),
-                sampleTime: report.sampleTime || '',
+                sampleTime: formatAMPM(report.sampleTime || ''),
                 sampleType: report.sampleType || '',
                 preparedBy: report.preparedBy || '',
               },
