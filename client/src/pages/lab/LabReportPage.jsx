@@ -140,6 +140,31 @@ const PRINT_CSS = `
     .print-section-hidden {
       display: none !important;
       visibility: hidden !important;
+      height: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* When body has print-only-mode class: override page layout for clean single-section print */
+    body.print-only-mode #REPORT_PRINT_ROOT {
+      position: relative !important;
+      min-height: unset !important;
+      height: auto !important;
+    }
+
+    body.print-only-mode table.print-page-table {
+      height: auto !important;
+    }
+
+    body.print-only-mode table.print-page-table > thead {
+      display: none !important;
+    }
+
+    body.print-only-mode table.print-page-table > tfoot {
+      display: none !important;
+    }
+
+    body.print-only-mode .report-watermark {
+      display: none !important;
     }
   }
 `;
@@ -1257,23 +1282,39 @@ export default function LabReportPage() {
   );
 
   // Print ONLY one test section (hides all others during print)
+  // Uses body class + useEffect to guarantee DOM updates BEFORE window.print() fires
   const handlePrintOnly = useCallback(
     async (sectionId, withHeader = true) => {
       if (!selPatient) { toast.error('Please select a patient'); return; }
       if (!selPatient.gender) { toast.error('Patient gender is required. Please edit patient to add gender.'); return; }
       dispatch({ type: 'SET_HEADER', val: withHeader });
       await saveReport();
+      // Add body class for CSS overrides, then set state — useEffect will fire print
+      document.body.classList.add('print-only-mode');
       setPrintOnlyId(sectionId);
-      // After print dialog closes, restore all sections
+      // Cleanup after print
       const onAfter = () => {
         setPrintOnlyId(null);
+        document.body.classList.remove('print-only-mode');
         window.removeEventListener('afterprint', onAfter);
       };
       window.addEventListener('afterprint', onAfter);
-      setTimeout(() => window.print(), 200);
     },
     [selPatient, saveReport, dispatch]
   );
+
+  // Fire window.print() AFTER React has re-rendered with printOnlyId set
+  // useEffect runs after DOM paint — guarantees CSS classes are applied
+  useEffect(() => {
+    if (printOnlyId !== null) {
+      // Double-rAF: ensures browser has actually painted the hidden elements
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.print();
+        });
+      });
+    }
+  }, [printOnlyId]);
 
   const filteredTests = allTests.filter((t) => {
     const matchCat = selCat === 'All' || t.category === selCat;
@@ -1558,23 +1599,20 @@ export default function LabReportPage() {
               <thead>
                 <tr>
                   <td style={{ border: 'none', padding: 0 }}>
-                    {/* When printing only one test, hide the header+patient info block */}
-                    <div className={printOnlyId !== null ? 'print-section-hidden' : ''}>
-                      {state.showHeader && (
-                        <LabHeader logoUrl={assets.logo} settings={assets.settings} />
-                      )}
-                      {selPatient ? (
-                        <PatientInfoSection
-                          patient={selPatient}
-                          meta={state.meta}
-                          dispatch={dispatch}
-                        />
-                      ) : (
-                        <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                          👈 Please select a patient from the left panel
-                        </div>
-                      )}
-                    </div>
+                    {state.showHeader && (
+                      <LabHeader logoUrl={assets.logo} settings={assets.settings} />
+                    )}
+                    {selPatient ? (
+                      <PatientInfoSection
+                        patient={selPatient}
+                        meta={state.meta}
+                        dispatch={dispatch}
+                      />
+                    ) : (
+                      <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
+                        👈 Please select a patient from the left panel
+                      </div>
+                    )}
                   </td>
                 </tr>
               </thead>
@@ -1612,17 +1650,14 @@ export default function LabReportPage() {
               <tfoot>
                 <tr>
                   <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
-                    {/* Hide footer when printing only one test */}
-                    <div className={printOnlyId !== null ? 'print-section-hidden' : ''}>
-                      {state.showHeader && (
-                        <ReportFooter
-                          meta={state.meta}
-                          dispatch={dispatch}
-                          signatureUrl={assets.signature}
-                          settings={assets.settings}
+                    {state.showHeader && (
+                      <ReportFooter
+                        meta={state.meta}
+                        dispatch={dispatch}
+                        signatureUrl={assets.signature}
+                        settings={assets.settings}
                         />
                       )}
-                    </div>
                   </td>
                 </tr>
               </tfoot>
