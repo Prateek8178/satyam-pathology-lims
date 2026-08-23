@@ -53,9 +53,16 @@ export default function SuperAdminDashboard() {
   // Clinic settings state
   const [clinicAssets, setClinicAssets] = useState({ logo: null, signature: null });
   const [clinicForm, setClinicForm] = useState({
-    name: 'SATYAM PATHOLOGY CENTER', tagline: 'Accurate | Caring | Instant',
-    address: 'Inside Gopi Medical, Sheetla Mai Chauraha, Jabalpur',
-    phone: '9165144073, 9340311506, 9516128613', email: 'lp93403115@gmail.com'
+    name: 'We Care PATHOLOGY LAB',
+    tagline: 'Accurate Results Timely Delivered',
+    address: '1283, BT Road near Maruti Marbal, Choti Bajariya, Garha Jabalpur (M.P.)',
+    phone: '9131709514',
+    customerSupport: '9131709514',
+    email: 'lp93403115@gmail.com',
+    doctorName: 'DR. R K SAGARIYA',
+    doctorDegree: 'MD PATHOLOGY',
+    disclaimer: 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.',
+    notes: 'Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.'
   });
   const [savingClinic, setSavingClinic] = useState(false);
   const [uploadingAsset, setUploadingAsset] = useState(null);
@@ -66,7 +73,6 @@ export default function SuperAdminDashboard() {
   const fetchStats = useCallback(async () => {
     try {
       const r = await api.get('/admin/dashboard');
-      // API returns { success, data: { totalUsers, pendingUsers, ... } }
       setStats(r.data.data || r.data);
     } catch { toast.error('Failed to load stats'); }
   }, []);
@@ -680,15 +686,15 @@ export default function SuperAdminDashboard() {
 
             {/* Logo + Signature Upload */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><span>🖼️</span> Logo &amp; Signature</h3>
+              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><span>🖼️</span> Logo &amp; Signature (Stored Persistently in Cloud DB)</h3>
               <div className="grid grid-cols-2 gap-6">
                 {/* Logo */}
                 <div>
                   <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Clinic Logo</p>
                   <div className="flex flex-col items-center gap-3 p-4 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
                     {clinicAssets.logo
-                      ? <img src={`http://localhost:5000${clinicAssets.logo}`} alt="Logo" className="w-20 h-20 object-contain rounded-lg border border-slate-200 bg-white" />
-                      : <div className="w-20 h-20 flex items-center justify-center text-4xl bg-white rounded-lg border border-slate-200">🔬</div>
+                      ? <img src={clinicAssets.logo} alt="Logo" className="w-24 h-24 object-contain rounded-lg border border-slate-200 bg-white" />
+                      : <div className="w-24 h-24 flex items-center justify-center text-4xl bg-white rounded-lg border border-slate-200">🔬</div>
                     }
                     <button onClick={() => logoInputRef.current?.click()} disabled={uploadingAsset === 'logo'}
                       className="w-full py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-blue-300 transition-colors">
@@ -696,7 +702,7 @@ export default function SuperAdminDashboard() {
                     </button>
                     <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
                       onChange={e => handleUploadAsset('logo', e.target.files[0])} />
-                    <p className="text-xs text-slate-400 text-center">JPG / PNG · Max 5MB</p>
+                    <p className="text-xs text-slate-400 text-center">JPG / PNG / SVG · Max 5MB</p>
                   </div>
                 </div>
                 {/* Signature */}
@@ -704,8 +710,8 @@ export default function SuperAdminDashboard() {
                   <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Doctor Signature</p>
                   <div className="flex flex-col items-center gap-3 p-4 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
                     {clinicAssets.signature
-                      ? <img src={`http://localhost:5000${clinicAssets.signature}`} alt="Signature" className="w-20 h-20 object-contain rounded-lg border border-slate-200 bg-white" />
-                      : <div className="w-20 h-20 flex items-center justify-center text-4xl bg-white rounded-lg border border-slate-200">✍️</div>
+                      ? <img src={clinicAssets.signature} alt="Signature" className="w-24 h-24 object-contain rounded-lg border border-slate-200 bg-white" />
+                      : <div className="w-24 h-24 flex items-center justify-center text-4xl bg-white rounded-lg border border-slate-200">✍️</div>
                     }
                     <button onClick={() => sigInputRef.current?.click()} disabled={uploadingAsset === 'signature'}
                       className="w-full py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-blue-300 transition-colors">
@@ -713,7 +719,7 @@ export default function SuperAdminDashboard() {
                     </button>
                     <input ref={sigInputRef} type="file" accept="image/*" className="hidden"
                       onChange={e => handleUploadAsset('signature', e.target.files[0])} />
-                    <p className="text-xs text-slate-400 text-center">JPG / PNG · Max 5MB</p>
+                    <p className="text-xs text-slate-400 text-center">JPG / PNG / SVG · Max 5MB</p>
                   </div>
                 </div>
               </div>
@@ -721,36 +727,47 @@ export default function SuperAdminDashboard() {
 
             {/* Header Text Settings */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><span>📝</span> Report Header Text</h3>
+              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><span>📝</span> Report Header &amp; Footer Settings</h3>
               <form onSubmit={handleSaveClinicSettings} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Clinic / Lab Name</label>
-                  <input type="text" value={clinicForm.name}
-                    onChange={e => setClinicForm(f => ({...f, name: e.target.value}))}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors font-bold"
-                    placeholder="SATYAM PATHOLOGY CENTER" required />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Clinic / Lab Name</label>
+                    <input type="text" value={clinicForm.name}
+                      onChange={e => setClinicForm(f => ({...f, name: e.target.value}))}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors font-bold"
+                      placeholder="We Care PATHOLOGY LAB" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Tagline / Slogan</label>
+                    <input type="text" value={clinicForm.tagline}
+                      onChange={e => setClinicForm(f => ({...f, tagline: e.target.value}))}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                      placeholder="Accurate Results Timely Delivered" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Tagline / Slogan</label>
-                  <input type="text" value={clinicForm.tagline}
-                    onChange={e => setClinicForm(f => ({...f, tagline: e.target.value}))}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
-                    placeholder="Accurate | Caring | Instant" />
-                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Address</label>
                   <input type="text" value={clinicForm.address}
                     onChange={e => setClinicForm(f => ({...f, address: e.target.value}))}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
-                    placeholder="Inside Gopi Medical..." required />
+                    placeholder="1283, BT Road near Maruti Marbal..." required />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Phone Number(s)</label>
                     <input type="text" value={clinicForm.phone}
                       onChange={e => setClinicForm(f => ({...f, phone: e.target.value}))}
                       className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
-                      placeholder="9165144073, 9340311506..." />
+                      placeholder="9131709514..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Customer Support</label>
+                    <input type="text" value={clinicForm.customerSupport}
+                      onChange={e => setClinicForm(f => ({...f, customerSupport: e.target.value}))}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                      placeholder="9131709514" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Email</label>
@@ -760,17 +777,47 @@ export default function SuperAdminDashboard() {
                       placeholder="clinic@email.com" />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Doctor Name (For Signature)</label>
+                    <input type="text" value={clinicForm.doctorName}
+                      onChange={e => setClinicForm(f => ({...f, doctorName: e.target.value}))}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors font-semibold"
+                      placeholder="DR. R K SAGARIYA" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Doctor Degree / Designation</label>
+                    <input type="text" value={clinicForm.doctorDegree}
+                      onChange={e => setClinicForm(f => ({...f, doctorDegree: e.target.value}))}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors font-semibold"
+                      placeholder="MD PATHOLOGY" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Bottom Page Footer Disclaimer Note</label>
+                  <textarea value={clinicForm.disclaimer} rows={2}
+                    onChange={e => setClinicForm(f => ({...f, disclaimer: e.target.value}))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 transition-colors"
+                    placeholder="Note: Pathological Test Have Technical, For Any Disparity..." />
+                </div>
+
                 {/* Preview */}
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                  <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">Preview</p>
+                  <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">Header Preview</p>
                   <div style={{ fontFamily:'Arial Black, Arial, sans-serif', fontSize:'16px', fontWeight:'900', color:'#c62828' }}>{clinicForm.name}</div>
                   <div style={{ fontSize:'11px', fontWeight:'800', color:'#1a237e', marginTop:'2px' }}>{clinicForm.tagline}</div>
                   <div style={{ fontSize:'10px', color:'#1a237e', marginTop:'3px' }}>{clinicForm.address}</div>
-                  <div style={{ fontSize:'10px', color:'#1a237e' }}>{clinicForm.phone} | {clinicForm.email}</div>
+                  <div style={{ fontSize:'10px', color:'#1a237e' }}>Support: {clinicForm.customerSupport || clinicForm.phone} | {clinicForm.email}</div>
+                  <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-600">
+                    <strong>Signatory:</strong> {clinicForm.doctorName} ({clinicForm.doctorDegree})
+                  </div>
                 </div>
+
                 <button type="submit" disabled={savingClinic}
                   className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:bg-blue-300 transition-colors">
-                  {savingClinic ? 'Saving...' : '💾 Save Report Settings'}
+                  {savingClinic ? 'Saving...' : '💾 Save Report Settings (Persistent)'}
                 </button>
               </form>
             </div>

@@ -45,7 +45,6 @@ export default function AddPatient() {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.fullName.trim()) { toast.error('Full name is required'); return; }
-    if (!form.mobile.trim())   { toast.error('Mobile number is required'); return; }
     setSaving(true);
     try {
       const res = await api.post('/patients', {
@@ -54,7 +53,7 @@ export default function AddPatient() {
         dob: form.dob || undefined,
         age: form.age ? Number(form.age) : undefined,
         gender: form.gender || undefined,
-        mobile: form.mobile.trim(),
+        mobile: form.mobile.trim() || undefined,
         email: form.email.trim() || undefined,
         bloodGroup: form.bloodGroup || undefined,
         referredByName: form.referredBy.trim() || undefined,
@@ -114,7 +113,7 @@ export default function AddPatient() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4 pb-2 border-b border-slate-100">Contact Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Mobile Number" name="mobile" value={form.mobile} onChange={handle} type="tel" placeholder="10-digit mobile number" required />
+            <Field label="Mobile Number (optional)" name="mobile" value={form.mobile} onChange={handle} type="tel" placeholder="10-digit mobile number" />
             <Field label="Email (optional)" name="email" value={form.email} onChange={handle} type="email" placeholder="email@example.com" />
             <Field label="Street / Colony" name="address.street" value={form['address.street']} onChange={handle} placeholder="Street, colony, area" span2 />
             <Field label="City" name="address.city" value={form['address.city']} onChange={handle} placeholder="City" />

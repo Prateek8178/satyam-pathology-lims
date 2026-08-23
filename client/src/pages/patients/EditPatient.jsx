@@ -75,7 +75,6 @@ export default function EditPatient() {
     e.preventDefault();
     const errs = {};
     if (!form.fullName.trim()) errs.fullName = 'Full name is required';
-    if (!form.mobile.trim())   errs.mobile   = 'Mobile number is required';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setSaving(true);
@@ -86,7 +85,7 @@ export default function EditPatient() {
         dob: form.dob || undefined,
         age: form.age ? parseInt(form.age) : undefined,
         gender: form.gender,
-        mobile: form.mobile.trim(),
+        mobile: form.mobile.trim() || undefined,
         email: form.email.trim() || undefined,
         bloodGroup: form.bloodGroup || undefined,
         referredByName: form.referredBy.trim() || undefined,
@@ -152,7 +151,7 @@ export default function EditPatient() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4 pb-2 border-b border-slate-100">Contact Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Mobile Number" name="mobile" value={form.mobile} onChange={handle} type="tel" placeholder="10-digit mobile" required err={errors.mobile} />
+            <Field label="Mobile Number (optional)" name="mobile" value={form.mobile} onChange={handle} type="tel" placeholder="10-digit mobile number" err={errors.mobile} />
             <Field label="Email (optional)" name="email" value={form.email} onChange={handle} type="email" placeholder="email@example.com" />
             <Field label="Street / Colony" name="address.street" value={form['address.street']} onChange={handle} placeholder="Street, colony" span2 />
             <Field label="City" name="address.city" value={form['address.city']} onChange={handle} placeholder="City" />

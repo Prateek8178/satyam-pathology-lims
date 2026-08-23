@@ -48,8 +48,12 @@ const create = async (req, res) => {
     const serial   = String(countToday + 1).padStart(3, '0'); // 001, 002, ...
     const reportNo = prefix + serial;                          // STP-15082026-001
 
+    const { filterReportableSections } = require('../utils/formulaEngine');
+    const cleanedSections = filterReportableSections(req.body.sections || []);
+
     const report = await SavedReport.create({
       ...req.body,
+      sections: cleanedSections,
       reportNo,          // override whatever client sent
       createdBy: req.user._id,
     });

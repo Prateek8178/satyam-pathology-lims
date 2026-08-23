@@ -7,22 +7,26 @@ const Result = require('../models/Result');
 const LabSettings = require('../models/LabSettings');
 const TestParameter = require('../models/TestParameter');
 const { REPORT_TYPE } = require('../config/constants');
+const { isReportable } = require('../utils/formulaEngine');
 
 const COLORS = {
-  primary: '#1E40AF',
+  primary: '#1D3557',
+  accent: '#E63946',
   danger: '#DC2626',
   warning: '#D97706',
   success: '#059669',
-  text: '#1F2937',
-  muted: '#6B7280',
-  light: '#F3F4F6',
-  border: '#E5E7EB'
+  text: '#0F172A',
+  muted: '#64748B',
+  light: '#F8FAFC',
+  border: '#CBD5E1'
 };
 
 const getFlagColor = (flag) => {
   switch (flag) {
-    case 'CRITICAL': return COLORS.danger;
-    case 'HIGH': return '#EA580C';
+    case 'CRITICAL':
+    case 'High':
+    case 'HIGH': return COLORS.danger;
+    case 'Low':
     case 'LOW': return '#2563EB';
     case 'ABNORMAL': return COLORS.warning;
     default: return COLORS.text;
@@ -30,13 +34,28 @@ const getFlagColor = (flag) => {
 };
 
 const getFlagLabel = (flag) => {
-  switch (flag) {
-    case 'CRITICAL': return 'C';
-    case 'HIGH': return 'H';
-    case 'LOW': return 'L';
-    case 'ABNORMAL': return 'A';
-    default: return '';
+  if (!flag) return '';
+  if (flag === 'CRITICAL' || flag === 'C') return 'Critical';
+  if (flag === 'HIGH' || flag === 'High' || flag === 'H') return 'High';
+  if (flag === 'LOW' || flag === 'Low' || flag === 'L') return 'Low';
+  return String(flag);
+};
+
+// Converts Base64 data URL or file path to Buffer
+const getImageBuffer = (src) => {
+  if (!src) return null;
+  try {
+    if (src.startsWith('data:image/')) {
+      const base64Data = src.split(',')[1];
+      return Buffer.from(base64Data, 'base64');
+    }
+    if (fs.existsSync(src)) {
+      return fs.readFileSync(src);
+    }
+  } catch (err) {
+    console.error('Image buffer extraction error:', err.message);
   }
+  return null;
 };
 
 const generateReport = async (reportId, reportType, options = {}) => {
@@ -52,13 +71,21 @@ const generateReport = async (reportId, reportType, options = {}) => {
   if (!report) throw new Error(`Report not found: ${reportId}`);
   if (!report.result) throw new Error('No result data found for report');
 
-  const labSettings = await LabSettings.findOne();
-  const patient = report.patient;
-  const test = report.test;
-  const result = report.result;
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const labSettings = (await LabSettings.findOne()) || {
+    labName: 'We Care PATHOLOGY LAB',
+    tagline: 'Accurate Results Timely Delivered',
+    address: '1283, BT Road near Maruti Marbal, Choti Bajariya, Garha Jabalpur (M.P.)',
+    phone: '9131709514',
+    doctorName: 'DR. R K SAGARIYA',
+    doctorDegree: 'MD PATHOLOGY',
+    disclaimer: 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.'
+  };
 
-  // Ensure uploads directory exists
+  const patient = report.patient || {};
+  const test = report.test || {};
+  const result = report.result || {};
+  const doc = new PDFDocument({ margin: 30, size: 'A4', autoFirstPage: false });
+
   const uploadDir = path.join(__dirname, '../../uploads/reports');
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -68,152 +95,164 @@ const generateReport = async (reportId, reportType, options = {}) => {
   const stream = fs.createWriteStream(filePath);
   doc.pipe(stream);
 
-  const pageWidth = doc.page.width - 80; // accounting for margins
-  let y = 40;
+  const logoBuffer = getImageBuffer(labSettings.logo);
+  const signatureBuffer = getImageBuffer(labSettings.signature);
+  const qrBuffer = await QRCode.toBuffer(`https://satyam-pathology-lims.com/verify/${reportId}`, { width: 80, margin: 1 }).catch(() => null);
 
-  if (reportType === REPORT_TYPE.WITH_HEADER && labSettings) {
-    // === HEADER SECTION ===
-    // Logo (if exists)
-    if (labSettings.logo && fs.existsSync(labSettings.logo)) {
-      doc.image(labSettings.logo, 40, y, { width: 80, height: 80 });
+  // Helper to draw the header on a page
+  const drawHeader = () => {
+    const pageWidth = doc.page.width - 60;
+    let y = 30;
+
+    if (reportType === REPORT_TYPE.WITH_HEADER) {
+      // Left Badge
+      doc.rect(30, y, 140, 48).fill('#1D3557');
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#FFFFFF')
+        .text('PATHOLOGY REPORTS', 36, y + 8, { width: 128, align: 'center' });
+      doc.rect(36, y + 26, 128, 16).fill('#E63946');
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#FFFFFF')
+        .text(labSettings.tagline || 'Accurate Results Timely Delivered', 36, y + 30, { width: 128, align: 'center' });
+
+      // Logo
+      if (logoBuffer) {
+        doc.image(logoBuffer, 180, y, { fit: [50, 48], align: 'center', valign: 'center' });
+      }
+
+      // Right Clinic Details
+      doc.fontSize(18).font('Helvetica-Bold').fillColor('#E63946')
+        .text(labSettings.labName || 'We Care PATHOLOGY LAB', 240, y, { width: pageWidth - 210, align: 'right' });
+      doc.fontSize(8).font('Helvetica').fillColor('#334155')
+        .text(labSettings.address || '', 240, y + 22, { width: pageWidth - 210, align: 'right' })
+        .text(`Customer Support :- ${labSettings.customerSupport || labSettings.phone || ''}`, 240, y + 34, { width: pageWidth - 210, align: 'right' });
+
+      y += 56;
+      doc.moveTo(30, y).lineTo(30 + pageWidth, y).lineWidth(1.5).strokeColor('#0F172A').stroke();
+      y += 6;
     }
-    // Lab name
-    doc.fontSize(20).font('Helvetica-Bold').fillColor(COLORS.primary)
-      .text(labSettings.labName || 'Path-Lab Diagnostics', 130, y + 5, { width: pageWidth - 90 });
-    // Address/contact
-    doc.fontSize(9).font('Helvetica').fillColor(COLORS.muted)
-      .text(labSettings.address || '', 130, y + 32, { width: pageWidth - 90 })
-      .text(`Tel: ${labSettings.phone || ''} | Email: ${labSettings.email || ''}`, 130, y + 44)
-      .text(labSettings.registrationInfo || '', 130, y + 56);
-    y += 90;
-    // Separator
-    doc.moveTo(40, y).lineTo(40 + pageWidth, y).lineWidth(2).strokeColor(COLORS.primary).stroke();
-    y += 10;
-  } else {
-    // WITHOUT_HEADER: just a thin top border
-    doc.moveTo(40, y).lineTo(40 + pageWidth, y).lineWidth(1).strokeColor(COLORS.border).stroke();
-    y += 10;
-  }
 
-  // === REPORT TITLE ===
-  doc.fontSize(13).font('Helvetica-Bold').fillColor(COLORS.primary)
-    .text('LABORATORY REPORT', 40, y, { width: pageWidth, align: 'center' });
-  y += 22;
+    // Patient Info Box
+    const col1X = 35;
+    const col2X = 230;
+    const col3X = 420;
+    const infoY = y + 4;
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor(COLORS.text);
+    doc.text(`${patient.fullName || '—'}`, col1X, infoY);
+    doc.fontSize(8).font('Helvetica');
+    doc.text(`Age : ${patient.age ? `${patient.age} Years` : '—'}`, col1X, infoY + 12);
+    doc.text(`Sex : ${patient.gender || '—'}`, col1X, infoY + 22);
+    doc.text(`UHID : ${patient.patientId || reportId}`, col1X, infoY + 32);
 
-  // Report ID + Date (right aligned)
-  doc.fontSize(8).font('Helvetica').fillColor(COLORS.muted);
-  const reportDate = new Date(report.generatedAt || Date.now()).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  doc.text(`Report ID: ${reportId}`, 40, y, { width: pageWidth, align: 'right' });
-  y += 12;
-  doc.text(`Date: ${reportDate}`, 40, y, { width: pageWidth, align: 'right' });
-  y += 18;
+    if (qrBuffer) {
+      doc.image(qrBuffer, col2X, infoY, { width: 42, height: 42 });
+    }
+    doc.font('Helvetica-Bold').text(`Ref. By : ${patient.referringDoctor?.name || 'Self'}`, col2X + 48, infoY + 12);
 
-  // === PATIENT INFO BOX ===
-  doc.rect(40, y, pageWidth, 60).fillAndStroke(COLORS.light, COLORS.border);
-  const col1X = 50;
-  const col2X = 220;
-  const col3X = 390;
-  const infoY = y + 8;
-  doc.fontSize(9).fillColor(COLORS.text);
-  const dob = patient.dob ? new Date(patient.dob).toLocaleDateString('en-IN') : 'N/A';
-  const collectionDate = result.enteredAt ? new Date(result.enteredAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-  
-  doc.font('Helvetica-Bold').text('Patient:', col1X, infoY).font('Helvetica').text(`${patient.fullName}`, col1X + 50, infoY);
-  doc.font('Helvetica-Bold').text('UHID:', col1X, infoY + 14).font('Helvetica').text(patient.patientId, col1X + 50, infoY + 14);
-  doc.font('Helvetica-Bold').text('Age/Sex:', col1X, infoY + 28).font('Helvetica').text(`${patient.age || 'N/A'} Yrs / ${patient.gender || 'N/A'}`, col1X + 50, infoY + 28);
-  doc.font('Helvetica-Bold').text('Mobile:', col1X, infoY + 42).font('Helvetica').text(patient.mobile || 'N/A', col1X + 50, infoY + 42);
-  
-  const refDoc = patient.referringDoctor?.name || 'Self';
-  doc.font('Helvetica-Bold').text('Ref. Doctor:', col2X, infoY).font('Helvetica').text(refDoc, col2X + 70, infoY);
-  doc.font('Helvetica-Bold').text('Collection:', col2X, infoY + 14).font('Helvetica').text(collectionDate, col2X + 70, infoY + 14);
-  doc.font('Helvetica-Bold').text('Sample Type:', col2X, infoY + 28).font('Helvetica').text(test.sampleType || 'N/A', col2X + 70, infoY + 28);
+    const reportDate = new Date(report.generatedAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    doc.font('Helvetica').text(`Registered : ${reportDate} 09:00 AM`, col3X, infoY, { align: 'right' });
+    doc.text(`Collected : ${reportDate} 09:45 AM`, col3X, infoY + 12, { align: 'right' });
+    doc.text(`Reported : ${reportDate} 04:00 PM`, col3X, infoY + 22, { align: 'right' });
 
-  y += 68;
+    y += 48;
+    doc.moveTo(30, y).lineTo(30 + pageWidth, y).lineWidth(1.5).strokeColor('#0F172A').stroke();
+    return y + 10;
+  };
 
-  // === TEST NAME ===
-  doc.rect(40, y, pageWidth, 18).fill(COLORS.primary);
-  doc.fontSize(10).font('Helvetica-Bold').fillColor('#FFFFFF')
-    .text(test.testName?.toUpperCase() || 'TEST RESULTS', 46, y + 4, { width: pageWidth - 12 });
-  y += 22;
+  // Helper to draw repeating footer on every page
+  const drawFooter = () => {
+    const pageWidth = doc.page.width - 60;
+    const footerY = doc.page.height - 75;
 
-  // === RESULTS TABLE HEADER ===
-  const colWidths = { sno: 25, param: 160, result: 80, unit: 70, range: 120, flag: 40 };
-  const startX = 40;
-  doc.rect(startX, y, pageWidth, 16).fill('#E8EEF7');
-  doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.text);
-  let cx = startX + 4;
-  doc.text('#', cx, y + 4, { width: colWidths.sno }); cx += colWidths.sno;
-  doc.text('Parameter', cx, y + 4, { width: colWidths.param }); cx += colWidths.param;
-  doc.text('Result', cx, y + 4, { width: colWidths.result }); cx += colWidths.result;
-  doc.text('Unit', cx, y + 4, { width: colWidths.unit }); cx += colWidths.unit;
-  doc.text('Reference Range', cx, y + 4, { width: colWidths.range }); cx += colWidths.range;
-  doc.text('Flag', cx, y + 4, { width: colWidths.flag });
-  y += 18;
+    // Doctor Signature
+    const sigX = 30 + pageWidth - 140;
+    if (signatureBuffer) {
+      doc.image(signatureBuffer, sigX + 20, footerY - 32, { fit: [100, 30], align: 'center' });
+    }
+    doc.fontSize(9.5).font('Helvetica-Bold').fillColor(COLORS.text)
+      .text(labSettings.doctorName || 'DR. R K SAGARIYA', sigX, footerY, { width: 140, align: 'center' });
+    doc.fontSize(8).font('Helvetica').fillColor('#475569')
+      .text(labSettings.doctorDegree || 'MD PATHOLOGY', sigX, footerY + 11, { width: 140, align: 'center' });
 
-  // === RESULT ROWS ===
-  const paramResults = result.parameterResults || [];
+    // Disclaimer line
+    doc.moveTo(30, footerY + 24).lineTo(30 + pageWidth, footerY + 24).lineWidth(0.5).strokeColor(COLORS.border).stroke();
+    doc.fontSize(7).font('Helvetica').fillColor(COLORS.muted)
+      .text(labSettings.disclaimer || 'Note: Pathological Test Have Technical, For Any Disparity, retested Examination Are Required. No Legal Liability Is Accepted. Clinical Correlation Is Also Requested.', 30, footerY + 28, { width: pageWidth, align: 'center' });
+  };
+
+  doc.addPage();
+  let currentY = drawHeader();
+
+  // Test Title
+  const pageWidth = doc.page.width - 60;
+  doc.fontSize(11).font('Helvetica-Bold').fillColor(COLORS.text)
+    .text(test.testName?.toUpperCase() || 'LABORATORY REPORT', 30, currentY, { width: pageWidth, align: 'center' });
+  currentY += 18;
+
+  // Table Headers
+  const colWidths = { param: 190, result: 80, flag: 40, range: 140, unit: 85 };
+  doc.moveTo(30, currentY).lineTo(30 + pageWidth, currentY).lineWidth(1.5).strokeColor('#0F172A').stroke();
+  currentY += 4;
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.text);
+  let cx = 30;
+  doc.text('Test', cx + 4, currentY, { width: colWidths.param }); cx += colWidths.param;
+  doc.text('Result', cx, currentY, { width: colWidths.result, align: 'center' }); cx += colWidths.result;
+  doc.text('', cx, currentY, { width: colWidths.flag }); cx += colWidths.flag;
+  doc.text('Ref. Value', cx + 4, currentY, { width: colWidths.range }); cx += colWidths.range;
+  doc.text('Unit', cx, currentY, { width: colWidths.unit, align: 'center' });
+  currentY += 14;
+  doc.moveTo(30, currentY).lineTo(30 + pageWidth, currentY).lineWidth(1).strokeColor('#0F172A').stroke();
+  currentY += 6;
+
+  // Filter only reportable parameter results
+  const rawParams = result.parameterResults || [];
+  const paramResults = rawParams.filter(pr => isReportable(pr.value) || isReportable(pr.numericValue));
+
   paramResults.forEach((pr, i) => {
-    const rowH = 16;
-    if (i % 2 === 0) doc.rect(startX, y, pageWidth, rowH).fill('#FAFAFA');
-    doc.fontSize(8).fillColor(getFlagColor(pr.flag)).font('Helvetica');
-    let rx = startX + 4;
-    doc.text(String(i + 1), rx, y + 4, { width: colWidths.sno }); rx += colWidths.sno;
-    doc.fillColor(COLORS.text).text(pr.parameter?.paramName || 'N/A', rx, y + 4, { width: colWidths.param }); rx += colWidths.param;
-    doc.fillColor(getFlagColor(pr.flag)).font('Helvetica-Bold').text(pr.value || 'N/A', rx, y + 4, { width: colWidths.result }); rx += colWidths.result;
-    doc.fillColor(COLORS.muted).font('Helvetica').text(pr.unit || '', rx, y + 4, { width: colWidths.unit }); rx += colWidths.unit;
-    doc.fillColor(COLORS.text).text(pr.referenceRange || 'N/A', rx, y + 4, { width: colWidths.range }); rx += colWidths.range;
-    const flagLabel = getFlagLabel(pr.flag);
-    if (flagLabel) {
-      doc.fillColor(getFlagColor(pr.flag)).font('Helvetica-Bold').text(flagLabel, rx, y + 4, { width: colWidths.flag });
+    // Check if we need a new page
+    if (currentY > doc.page.height - 110) {
+      drawFooter();
+      doc.addPage();
+      currentY = drawHeader() + 10;
     }
-    // Bottom border
-    doc.moveTo(startX, y + rowH).lineTo(startX + pageWidth, y + rowH).lineWidth(0.3).strokeColor(COLORS.border).stroke();
-    y += rowH;
+
+    const rowH = 16;
+    let rx = 30;
+    doc.fontSize(8.5).font('Helvetica').fillColor(COLORS.text);
+    doc.text(pr.parameter?.paramName || 'Parameter', rx + 4, currentY + 3, { width: colWidths.param }); rx += colWidths.param;
+
+    doc.font('Helvetica-Bold').fillColor(getFlagColor(pr.flag))
+      .text(String(pr.value ?? pr.numericValue ?? ''), rx, currentY + 3, { width: colWidths.result, align: 'center' }); rx += colWidths.result;
+
+    const flagLabel = getFlagLabel(pr.flag);
+    doc.fontSize(8).text(flagLabel, rx, currentY + 3, { width: colWidths.flag, align: 'center' }); rx += colWidths.flag;
+
+    doc.fontSize(8.5).font('Helvetica').fillColor(COLORS.text)
+      .text(pr.referenceRange || '—', rx + 4, currentY + 3, { width: colWidths.range }); rx += colWidths.range;
+
+    doc.text(pr.unit || '', rx, currentY + 3, { width: colWidths.unit, align: 'center' });
+
+    currentY += rowH;
+    doc.moveTo(30, currentY).lineTo(30 + pageWidth, currentY).lineWidth(0.3).strokeColor('#E2E8F0').stroke();
+    currentY += 2;
   });
 
-  y += 10;
-
-  // === REMARKS ===
-  if (result.pathologistRemarks || result.technicianRemarks) {
-    doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.text).text('Remarks:', 40, y);
-    y += 12;
-    doc.fontSize(8).font('Helvetica').fillColor(COLORS.text)
-      .text(result.pathologistRemarks || result.technicianRemarks || '', 40, y, { width: pageWidth });
-    y += 20;
-  }
-
-  // === FOOTER ===
-  const footerY = doc.page.height - 120;
-  doc.moveTo(40, footerY).lineTo(40 + pageWidth, footerY).lineWidth(1).strokeColor(COLORS.border).stroke();
-  
-  // Signatures
-  doc.fontSize(8).font('Helvetica').fillColor(COLORS.muted);
-  doc.text('Technician', 40, footerY + 8);
-  doc.text('Authorized Signatory', 40 + pageWidth - 140, footerY + 8);
-  doc.moveTo(40, footerY + 40).lineTo(140, footerY + 40).lineWidth(0.5).strokeColor(COLORS.muted).stroke();
-  doc.moveTo(40 + pageWidth - 160, footerY + 40).lineTo(40 + pageWidth - 20, footerY + 40).lineWidth(0.5).strokeColor(COLORS.muted).stroke();
-
-  // QR Code (WITH_HEADER only)
-  if (reportType === REPORT_TYPE.WITH_HEADER && labSettings?.reportSettings?.showQR !== false) {
-    try {
-      const qrBuffer = await QRCode.toBuffer(`http://localhost:5173/verify-report/${reportId}`, { width: 70, margin: 1 });
-      doc.image(qrBuffer, 40 + pageWidth - 70, footerY + 5, { width: 60, height: 60 });
-      doc.fontSize(6).fillColor(COLORS.muted).text('Scan to verify', 40 + pageWidth - 70, footerY + 66, { width: 60, align: 'center' });
-    } catch (qrErr) {
-      console.warn('QR generation failed:', qrErr.message);
+  // Comments / Interpretation box
+  if (result.pathologistRemarks || result.technicianRemarks || test.comments) {
+    currentY += 10;
+    if (currentY > doc.page.height - 140) {
+      drawFooter();
+      doc.addPage();
+      currentY = drawHeader() + 10;
     }
+    const remarks = result.pathologistRemarks || result.technicianRemarks || test.comments;
+    doc.rect(30, currentY, pageWidth, 40).strokeColor('#0F172A').stroke();
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(COLORS.text)
+      .text('Interpretation / Comments:', 36, currentY + 4);
+    doc.fontSize(7.5).font('Helvetica').fillColor('#334155')
+      .text(remarks, 36, currentY + 14, { width: pageWidth - 12 });
   }
 
-  // Disclaimer
-  if (labSettings?.disclaimer) {
-    doc.fontSize(7).fillColor(COLORS.muted).text(labSettings.disclaimer, 40, footerY + 50, { width: pageWidth - 80 });
-  }
-
-  // Footer text
-  doc.fontSize(7).fillColor(COLORS.muted).text(
-    labSettings?.reportSettings?.footerText || `This report is generated by ${labSettings?.labName || 'Path-Lab'}. For queries contact lab.`,
-    40, footerY + 80, { width: pageWidth, align: 'center' }
-  );
+  // Draw footer on last page
+  drawFooter();
 
   doc.end();
 
@@ -222,7 +261,6 @@ const generateReport = async (reportId, reportType, options = {}) => {
     stream.on('error', reject);
   });
 
-  // Update report record
   const pdfRelPath = `uploads/reports/${fileName}`;
   await Report.findOneAndUpdate({ reportId }, { pdfPath: pdfRelPath, status: 'FINAL', generatedAt: new Date() });
 
