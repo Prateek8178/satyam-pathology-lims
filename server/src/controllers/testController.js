@@ -121,7 +121,7 @@ const deleteParameter = async (req, res) => {
 
 const getParameters = async (req, res) => {
   try {
-    const params = await TestParameter.find({ test: req.params.id, isActive: true }).sort({ displayOrder: 1, paramName: 1 });
+    const params = await TestParameter.find({ test: req.params.id }).sort({ displayOrder: 1, paramName: 1 });
     res.json({ success: true, data: params });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
