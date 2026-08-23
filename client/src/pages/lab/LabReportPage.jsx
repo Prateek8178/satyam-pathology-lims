@@ -13,8 +13,9 @@ import {
 
 /* ═══════════════════════════════════════════════════════════════
    PRINT STYLES (injected once into <head>)
-   Uses the EXACT original Satyam Pathology layout with fixed top header
-   and fixed bottom footer on every page!
+   Uses the CSS table-header-group & table-footer-group layout to guarantee
+   that the Header is fixed at the top of EVERY page and the Footer is fixed
+   at the bottom of EVERY page in both single-page & multi-page reports!
 ═══════════════════════════════════════════════════════════════ */
 const PRINT_CSS = `
   @media print {
@@ -26,7 +27,7 @@ const PRINT_CSS = `
     /* Hide everything on screen */
     body * { visibility: hidden !important; }
 
-    /* Show only the report and its contents */
+    /* Show only the report root */
     #REPORT_PRINT_ROOT,
     #REPORT_PRINT_ROOT * { visibility: visible !important; }
 
@@ -45,6 +46,28 @@ const PRINT_CSS = `
       max-width: none !important;
       font-family: Arial, sans-serif !important;
       color: #111 !important;
+    }
+
+    /* Standard CSS Print Table Header & Footer (Repeats on EVERY printed page!) */
+    table.print-page-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+
+    table.print-page-table > thead {
+      display: table-header-group !important;
+    }
+
+    table.print-page-table > tfoot {
+      display: table-footer-group !important;
+    }
+
+    table.print-page-table > thead > tr > td,
+    table.print-page-table > tfoot > tr > td,
+    table.print-page-table > tbody > tr > td {
+      border: none !important;
+      padding: 0 !important;
     }
 
     /* Hide all interactive controls */
@@ -68,9 +91,9 @@ const PRINT_CSS = `
       display: inline !important;
     }
 
-    /* Table borders */
-    table { border-collapse: collapse !important; width: 100% !important; }
-    td, th { border-color: #b0c4d8 !important; }
+    /* Table borders for inner test data */
+    .test-data-table { border-collapse: collapse !important; width: 100% !important; }
+    .test-data-table td, .test-data-table th { border-color: #b0c4d8 !important; }
 
     /* Hide empty unentered rows completely on print */
     .row-unentered {
@@ -101,7 +124,7 @@ const PRINT_CSS = `
       opacity: 0.08 !important;
     }
 
-    /* Fixed footer on bottom */
+    /* Fixed footer */
     .page-footer-container {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -452,7 +475,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
 /* ═══════════════════════════════════════════════════════════════
    TEST SECTION COMPONENT (Original Blue Bar Layout)
 ═══════════════════════════════════════════════════════════════ */
-const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) => {
+const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow }) => {
   const [savingTpl, setSavingTpl] = useState(false);
 
   const handleSaveTpl = async () => {
@@ -487,7 +510,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) =>
       </div>
 
       {/* Parameters Table (Exact Original Structure) */}
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="test-data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#dce8f5', borderBottom: '1px solid #b0c4d8' }}>
             {[
@@ -526,13 +549,13 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate }) =>
       {/* Screen Add Row buttons */}
       <div className="no-print" style={{ marginTop: '3px', display: 'flex', gap: '8px' }}>
         <button
-          onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id, isSubheader: false })}
+          onClick={() => onAddRow(section.id, false)}
           style={{ fontSize: '11px', color: '#1e3a5f', background: 'none', border: '1px dashed #1e3a5f', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
         >
           + Add Row
         </button>
         <button
-          onClick={() => dispatch({ type: 'ADD_ROW', sectionId: section.id, isSubheader: true })}
+          onClick={() => onAddRow(section.id, true)}
           style={{ fontSize: '11px', color: '#0369a1', background: 'none', border: '1px dashed #0284c7', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
         >
           + Add Subheader
@@ -562,8 +585,8 @@ const LabHeader = memo(({ logoUrl, settings }) => {
   const email   = s.email   || 'lp93403115@gmail.com';
 
   return (
-    <div style={{ marginBottom: '10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '10px' }}>
+    <div style={{ marginBottom: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '8px' }}>
         {/* Logo left — use uploaded image or SVG microscope */}
         <div style={{ flexShrink: 0 }}>
           {logoUrl ? (
@@ -576,7 +599,7 @@ const LabHeader = memo(({ logoUrl, settings }) => {
         {/* Clinic details center */}
         <div style={{ flex: 1, textAlign: 'center', lineHeight: '1.2' }}>
           <div style={{
-            fontSize: '32px',
+            fontSize: '30px',
             fontWeight: '900',
             color: '#c62828',
             fontFamily: '"Arial Black", "Arial", sans-serif',
@@ -586,25 +609,25 @@ const LabHeader = memo(({ logoUrl, settings }) => {
             {name}
           </div>
           <div style={{
-            fontSize: '14px',
+            fontSize: '13.5px',
             fontWeight: '800',
             color: '#1a237e',
-            marginTop: '3px',
+            marginTop: '2px',
             letterSpacing: '0.5px',
           }}>
             {tagline}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#1a237e', marginTop: '5px', fontWeight: '500' }}>
+          <div style={{ fontSize: '11px', color: '#1a237e', marginTop: '4px', fontWeight: '500' }}>
             {address}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#1a237e', marginTop: '3px' }}>
+          <div style={{ fontSize: '11px', color: '#1a237e', marginTop: '2px' }}>
             {phone} {email ? `| ${email}` : ''}
           </div>
         </div>
       </div>
 
       {/* Top separator — double line */}
-      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '10px' }} />
+      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '8px' }} />
     </div>
   );
 });
@@ -716,13 +739,13 @@ const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
   const notesText = s.notes || s.disclaimer || `Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.`;
 
   return (
-    <div className="page-footer-container" style={{ marginTop: '32px', fontSize: '10px' }}>
+    <div className="page-footer-container" style={{ marginTop: '24px', fontSize: '10px' }}>
       {/* Top separator — same double line style as header */}
-      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '14px' }} />
+      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '10px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px' }}>
         {/* Left: Prepared By + Notes */}
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px', fontSize: '11px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontSize: '11px' }}>
             <span style={{ fontWeight: '600' }}>Prepared By :</span>
             <input
               value={meta.preparedBy}
@@ -731,7 +754,7 @@ const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
               style={{ border: 'none', borderBottom: '1px solid #444', outline: 'none', width: '140px', fontSize: '11px', background: 'transparent' }}
             />
           </div>
-          <div style={{ color: '#333', lineHeight: '1.55', maxWidth: '380px', fontSize: '9.5px' }}>
+          <div style={{ color: '#333', lineHeight: '1.45', maxWidth: '380px', fontSize: '9px' }}>
             <span style={{ fontWeight: '700' }}>Notes: </span>
             {notesText}
           </div>
@@ -740,15 +763,15 @@ const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
         {/* Right: Signature + Dr. Name */}
         <div style={{ textAlign: 'center', minWidth: '160px', flexShrink: 0 }}>
           {signatureUrl ? (
-            <img src={signatureUrl} alt="Signature" style={{ height: '52px', objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} />
+            <img src={signatureUrl} alt="Signature" style={{ height: '48px', objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} />
           ) : (
-            <div style={{ height: '52px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', fontFamily: '"Dancing Script", "Brush Script MT", cursive', fontSize: '22px', color: '#222', lineHeight: '1' }}>
+            <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', fontFamily: '"Dancing Script", "Brush Script MT", cursive', fontSize: '22px', color: '#222', lineHeight: '1' }}>
               Khushboo.
             </div>
           )}
-          <div style={{ borderTop: '1px solid #333', paddingTop: '4px', marginTop: '2px' }}>
-            <div style={{ fontWeight: '900', fontSize: '12px', letterSpacing: '0.3px' }}>{docName}</div>
-            <div style={{ color: '#444', fontSize: '10.5px' }}>{docDegree}</div>
+          <div style={{ borderTop: '1px solid #333', paddingTop: '3px', marginTop: '2px' }}>
+            <div style={{ fontWeight: '900', fontSize: '11.5px', letterSpacing: '0.3px' }}>{docName}</div>
+            <div style={{ color: '#444', fontSize: '10px' }}>{docDegree}</div>
           </div>
         </div>
       </div>
@@ -849,6 +872,7 @@ export default function LabReportPage() {
           }
           const loadedSections = (report.sections || []).map((sec) => ({
             id: uid(),
+            testId: sec.testId || null,
             testName: sec.testName,
             comments: sec.comments || '',
             rows: (sec.rows || []).map((rw) => ({
@@ -985,7 +1009,7 @@ export default function LabReportPage() {
     });
   }, [testSearch]);
 
-  // Save changes to Test Master Template (Section 6, 7, 8, 9)
+  // Save changes to Test Master Template (Automatically updates MongoDB template!)
   const handleSaveTemplate = useCallback(async (section) => {
     try {
       const res = await api.put(`/tests/${section.testId || 'custom'}/template`, {
@@ -1001,6 +1025,22 @@ export default function LabReportPage() {
       toast.error('Failed to update test template');
     }
   }, [loadAllTests]);
+
+  // Add row and auto-persist to template
+  const handleAddRow = useCallback((sectionId, isSubheader) => {
+    dispatch({ type: 'ADD_ROW', sectionId, isSubheader });
+    // Also find section and sync to template in background
+    setTimeout(() => {
+      const sec = state.sections.find((s) => s.id === sectionId);
+      if (sec && sec.testId) {
+        api.put(`/tests/${sec.testId}/template`, {
+          testName: sec.testName,
+          rows: sec.rows,
+          comments: sec.comments,
+        }).catch(() => {});
+      }
+    }, 500);
+  }, [state.sections]);
 
   // Save Report
   const saveReport = useCallback(async () => {
@@ -1024,6 +1064,17 @@ export default function LabReportPage() {
         toast.error('Please enter at least one test result reading');
         setSaving(false);
         return;
+      }
+
+      // Auto-save templates for all sections so parameters are preserved for next patients
+      for (const sec of state.sections) {
+        if (sec.testId) {
+          api.put(`/tests/${sec.testId}/template`, {
+            testName: sec.testName,
+            rows: sec.rows,
+            comments: sec.comments,
+          }).catch(() => {});
+        }
       }
 
       const payload = {
@@ -1232,7 +1283,7 @@ export default function LabReportPage() {
           </div>
 
           <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '10px', color: '#64748b' }}>
-            💡 <strong>Smart Master:</strong> You can add/remove rows or formulas in any test and click <em>"Save Template"</em> to update it for all future reports!
+            💡 <strong>Smart Template:</strong> Added parameters are auto-saved to the Master Test database so they automatically appear for every new patient!
           </div>
         </div>
 
@@ -1316,7 +1367,7 @@ export default function LabReportPage() {
             </button>
           ))}
           <span style={{ fontSize: '11px', color: '#64748b', marginLeft: 'auto' }}>
-            {state.sections.length} test section(s) · Blank parameters auto-hide on print
+            {state.sections.length} test section(s) · Header & Footer repeat on every page
           </span>
         </div>
 
@@ -1352,56 +1403,74 @@ export default function LabReportPage() {
             )}
           </div>
 
-          {/* Content Layer above watermark */}
+          {/* Content Layer with Print Table Header/Footer Structure */}
           <div style={{ position: 'relative', zIndex: 1 }}>
-            
-            {/* Header Section (Original Satyam Header) */}
-            {state.showHeader && (
-              <LabHeader logoUrl={assets.logo} settings={assets.settings} />
-            )}
+            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+              {/* THEAD: Fixed Header at the top of EVERY page */}
+              <thead>
+                <tr>
+                  <td style={{ border: 'none', padding: 0 }}>
+                    {state.showHeader && (
+                      <LabHeader logoUrl={assets.logo} settings={assets.settings} />
+                    )}
+                    {selPatient ? (
+                      <PatientInfoSection
+                        patient={selPatient}
+                        meta={state.meta}
+                        dispatch={dispatch}
+                      />
+                    ) : (
+                      <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
+                        👈 Please select a patient from the left panel
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              </thead>
 
-            {/* Patient Information Section (Original Satyam Patient Box) */}
-            {selPatient ? (
-              <PatientInfoSection
-                patient={selPatient}
-                meta={state.meta}
-                dispatch={dispatch}
-              />
-            ) : (
-              <div className="no-print" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                👈 Please select a patient from the left panel
-              </div>
-            )}
+              {/* TBODY: Test Content & Result Tables */}
+              <tbody>
+                <tr>
+                  <td style={{ border: 'none', padding: 0 }}>
+                    {state.sections.length === 0 ? (
+                      <div className="no-print" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#334155' }}>No tests added yet</div>
+                        <div style={{ fontSize: '12px', marginTop: '2px' }}>Search and add tests from the left panel to populate parameters</div>
+                      </div>
+                    ) : (
+                      state.sections.map((sec) => (
+                        <TestSection
+                          key={sec.id}
+                          section={sec}
+                          gender={selPatient?.gender || 'Male'}
+                          age={selPatient?.age || 30}
+                          dispatch={dispatch}
+                          onSaveTemplate={handleSaveTemplate}
+                          onAddRow={handleAddRow}
+                        />
+                      ))
+                    )}
+                  </td>
+                </tr>
+              </tbody>
 
-            {/* Tests & Parameters */}
-            {state.sections.length === 0 ? (
-              <div className="no-print" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#334155' }}>No tests added yet</div>
-                <div style={{ fontSize: '12px', marginTop: '2px' }}>Search and add tests from the left panel to populate parameters</div>
-              </div>
-            ) : (
-              state.sections.map((sec) => (
-                <TestSection
-                  key={sec.id}
-                  section={sec}
-                  gender={selPatient?.gender || 'Male'}
-                  age={selPatient?.age || 30}
-                  dispatch={dispatch}
-                  onSaveTemplate={handleSaveTemplate}
-                />
-              ))
-            )}
-
-            {/* Footer with Doctor Signature & Disclaimer (Original Satyam Footer) */}
-            {state.showHeader && state.sections.length > 0 && (
-              <ReportFooter
-                meta={state.meta}
-                dispatch={dispatch}
-                signatureUrl={assets.signature}
-                settings={assets.settings}
-              />
-            )}
+              {/* TFOOT: Fixed Footer at the bottom of EVERY page */}
+              <tfoot>
+                <tr>
+                  <td style={{ border: 'none', padding: 0 }}>
+                    {state.showHeader && (
+                      <ReportFooter
+                        meta={state.meta}
+                        dispatch={dispatch}
+                        signatureUrl={assets.signature}
+                        settings={assets.settings}
+                      />
+                    )}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       </div>
