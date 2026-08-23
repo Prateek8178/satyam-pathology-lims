@@ -260,7 +260,7 @@ const formatAMPM = (timeStr) => {
 const initState = {
   patientId: '',
   meta: {
-    reportNo: '',
+    reportNo: makeSTPPrefix(),
     refDoctor: '',
     sampleDate: todayISO(),
     sampleTime: getNowTimeAMPM(),
@@ -392,12 +392,13 @@ const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) =
 /* ═══════════════════════════════════════════════════════════════
    PARAMETER ROW COMPONENT (Clean High-Contrast Table Layout)
 ═══════════════════════════════════════════════════════════════ */
-const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
+const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, hideRef, hideFlag }) => {
   // If row is a subheader (e.g. "DIFFERENTIAL WBC COUNT", "BILLIRUBIN")
   if (row.isSubheader) {
+    const span = 3 + (!hideUnit ? 1 : 0) + (!hideRef ? 1 : 0) + (!hideFlag ? 1 : 0);
     return (
       <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #333' }} className="test-row-item">
-        <td colSpan={5} style={{ padding: '4px 8px', border: '1px solid #cbd5e1' }}>
+        <td colSpan={span} style={{ padding: '4px 8px', border: '1px solid #cbd5e1' }}>
           <Editable
             value={row.param}
             placeholder="CATEGORY / SUBHEADER TITLE"
@@ -462,33 +463,39 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
         />
       </td>
 
-      {/* Unit */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
-        <Editable
-          value={row.unit}
-          placeholder="unit"
-          style={{ textAlign: 'center', width: '65px' }}
-          onChange={(e) =>
-            dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'unit', value: e.target.value })
-          }
-        />
-      </td>
+      {/* Unit — conditionally shown */}
+      {!hideUnit && (
+        <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
+          <Editable
+            value={row.unit}
+            placeholder="unit"
+            style={{ textAlign: 'center', width: '65px' }}
+            onChange={(e) =>
+              dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'unit', value: e.target.value })
+            }
+          />
+        </td>
+      )}
 
-      {/* Reference Value */}
-      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
-        <Editable
-          value={row.refRange}
-          placeholder="e.g. 12 - 15"
-          onChange={(e) =>
-            dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'refRange', value: e.target.value })
-          }
-        />
-      </td>
+      {/* Reference Range — conditionally shown */}
+      {!hideRef && (
+        <td style={{ padding: '4px 6px', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
+          <Editable
+            value={row.refRange}
+            placeholder="e.g. 12 - 15"
+            onChange={(e) =>
+              dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'refRange', value: e.target.value })
+            }
+          />
+        </td>
+      )}
 
-      {/* Flag (H / L) */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: '1px solid #cbd5e1' }}>
-        {flag || ''}
-      </td>
+      {/* Flag (H / L) — conditionally shown */}
+      {!hideFlag && (
+        <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: '1px solid #cbd5e1' }}>
+          {flag || ''}
+        </td>
+      )}
 
       {/* Screen Remove Button */}
       <td style={{ padding: '3px 4px', textAlign: 'center' }} className="no-print">
@@ -506,9 +513,13 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
 
 /* ═══════════════════════════════════════════════════════════════
    TEST SECTION COMPONENT (Clean Black Heading & Border Layout)
+   Now with column visibility toggles: hide Unit / Ref Range / Flag
 ═══════════════════════════════════════════════════════════════ */
 const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow }) => {
   const [savingTpl, setSavingTpl] = useState(false);
+  const [hideUnit, setHideUnit]   = useState(false);
+  const [hideRef,  setHideRef]    = useState(false);
+  const [hideFlag, setHideFlag]   = useState(false);
 
   const handleSaveTpl = async () => {
     setSavingTpl(true);
@@ -516,15 +527,50 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
     setSavingTpl(false);
   };
 
+  // Build table headers dynamically based on visibility
+  const headers = [
+    { label: 'Parameter',        width: hideUnit && hideRef && hideFlag ? '55%' : '34%', always: true },
+    { label: 'Result',           width: '14%', always: true },
+    { label: 'Unit',             width: '11%', hide: hideUnit },
+    { label: 'Reference Range',  width: hideRef ? '0' : '30%', hide: hideRef },
+    { label: 'Flag',             width: '6%',  hide: hideFlag },
+    { label: '',                 width: '5%',  always: true, noPrint: true },
+  ];
+
   return (
     <div className="test-section-block" style={{ marginBottom: '12px' }}>
-      {/* Test Title Bar — Clean Black Underline Heading for sharp B&W print */}
+      {/* Test Title Bar — Clean Black Underline Heading */}
       <div style={{ borderBottom: '2px solid #111', padding: '4px 2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '12.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#111' }}>
           {section.testName.toUpperCase()}
         </span>
         
-        <div className="no-print" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Column visibility toggles */}
+          {[
+            { label: 'Unit', state: hideUnit, set: setHideUnit },
+            { label: 'Ref.Range', state: hideRef, set: setHideRef },
+            { label: 'Flag', state: hideFlag, set: setHideFlag },
+          ].map(({ label, state, set }) => (
+            <button
+              key={label}
+              onClick={() => set(v => !v)}
+              title={`${state ? 'Show' : 'Hide'} ${label} column`}
+              style={{
+                fontSize: '9px',
+                padding: '2px 6px',
+                border: `1px solid ${state ? '#dc2626' : '#94a3b8'}`,
+                borderRadius: '4px',
+                background: state ? '#fef2f2' : '#f8fafc',
+                color: state ? '#dc2626' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: '600',
+              }}
+            >
+              {state ? '＋' : '－'} {label}
+            </button>
+          ))}
+
           <button
             onClick={handleSaveTpl}
             disabled={savingTpl}
@@ -536,46 +582,50 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
           <button
             onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
             style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
-            title="Remove section"
+            title="Remove test section"
           >
             ✕
           </button>
         </div>
       </div>
 
-      {/* Parameters Table (Clean High-Contrast Structure) */}
+      {/* Parameters Table */}
       <table className="test-data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#f8fafc', borderTop: '1px solid #111', borderBottom: '1px solid #111' }}>
-            {[
-              ['Parameter', '34%'],
-              ['Result', '14%'],
-              ['Unit', '11%'],
-              ['Reference Range', '30%'],
-              ['Flag', '6%'],
-              ['', '5%']
-            ].map(([h, w]) => (
+            {headers.filter(h => !h.hide).map((h) => (
               <th
-                key={h}
-                className={h === '' ? 'no-print' : ''}
+                key={h.label}
+                className={h.noPrint ? 'no-print' : ''}
                 style={{
                   padding: '4px 6px',
                   fontSize: '10.5px',
                   fontWeight: '800',
                   color: '#111',
-                  textAlign: h === 'Result' || h === 'Unit' || h === 'Flag' ? 'center' : 'left',
-                  width: w,
+                  textAlign: h.label === 'Result' || h.label === 'Unit' || h.label === 'Flag' ? 'center' : 'left',
+                  width: h.width,
                   border: '1px solid #cbd5e1',
                 }}
               >
-                {h}
+                {h.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {section.rows.map((row, i) => (
-            <ParamRow key={row.id} row={row} sectionId={section.id} gender={gender} age={age} dispatch={dispatch} idx={i} />
+            <ParamRow
+              key={row.id}
+              row={row}
+              sectionId={section.id}
+              gender={gender}
+              age={age}
+              dispatch={dispatch}
+              idx={i}
+              hideUnit={hideUnit}
+              hideRef={hideRef}
+              hideFlag={hideFlag}
+            />
           ))}
         </tbody>
       </table>
@@ -596,7 +646,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
         </button>
       </div>
 
-      {/* Method / Comments / Interpretation Box if available */}
+      {/* Method / Comments / Interpretation Box */}
       {section.comments && (
         <div style={{ marginTop: '6px', padding: '5px 8px', border: '1px solid #666', borderRadius: '2px', fontSize: '9px', lineHeight: '1.35', color: '#111' }}>
           <div style={{ fontWeight: '700', marginBottom: '2px' }}>Interpretation / Comments:</div>

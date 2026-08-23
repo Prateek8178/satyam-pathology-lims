@@ -111,7 +111,8 @@ const updateParameter = async (req, res) => {
 
 const deleteParameter = async (req, res) => {
   try {
-    await TestParameter.findByIdAndUpdate(req.params.paramId, { isActive: false });
+    const result = await TestParameter.findByIdAndDelete(req.params.paramId);
+    if (!result) return res.status(404).json({ success: false, message: 'Parameter not found' });
     res.json({ success: true, message: 'Parameter deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

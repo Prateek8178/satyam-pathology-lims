@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import TestMasterEditor from './TestMasterEditor';
 
 const fmtDate = d => d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '—';
 const fmtDateShort = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -226,6 +227,7 @@ export default function SuperAdminDashboard() {
     { id: 'pending',       label: `⏳ Pending${stats?.pendingUsers ? ` (${stats.pendingUsers})` : ''}` },
     { id: 'users',         label: '👥 All Users' },
     { id: 'reports',       label: '📋 Report Logs' },
+    { id: 'tests',         label: '🔬 Test Master' },
     { id: 'clinic',        label: '🏥 Report Settings' },
     { id: 'account',       label: '⚙️ My Account' },
   ];
@@ -821,6 +823,17 @@ export default function SuperAdminDashboard() {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* ── TEST MASTER EDITOR ── */}
+        {tab === 'tests' && (
+          <div>
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-slate-800">🔬 Test Master Editor</h2>
+              <p className="text-sm text-slate-500 mt-1">Add, edit, or delete tests and their parameters. Changes apply to all future reports.</p>
+            </div>
+            <TestMasterEditor />
           </div>
         )}
 

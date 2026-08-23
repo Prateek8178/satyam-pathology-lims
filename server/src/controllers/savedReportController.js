@@ -47,6 +47,49 @@ const getAll = async (req, res) => {
       }).select('_id');
       filter.patient = { $in: patients.map(p => p._id) };
     }
+
+    // ── Date Range Filtering ──────────────────────────────────
+    const now = new Date();
+    if (req.query.period) {
+      const start = new Date();
+      switch (req.query.period) {
+        case 'today':
+          start.setHours(0, 0, 0, 0);
+          filter.createdAt = { $gte: start };
+          break;
+        case 'week': {
+          const day = start.getDay(); // 0=Sun
+          start.setDate(start.getDate() - day);
+          start.setHours(0, 0, 0, 0);
+          filter.createdAt = { $gte: start };
+          break;
+        }
+        case 'month':
+          start.setDate(1);
+          start.setHours(0, 0, 0, 0);
+          filter.createdAt = { $gte: start };
+          break;
+        case 'year':
+          start.setMonth(0, 1);
+          start.setHours(0, 0, 0, 0);
+          filter.createdAt = { $gte: start };
+          break;
+        default:
+          break;
+      }
+    } else {
+      if (req.query.fromDate) {
+        filter.createdAt = filter.createdAt || {};
+        filter.createdAt.$gte = new Date(req.query.fromDate);
+      }
+      if (req.query.toDate) {
+        const to = new Date(req.query.toDate);
+        to.setHours(23, 59, 59, 999);
+        filter.createdAt = filter.createdAt || {};
+        filter.createdAt.$lte = to;
+      }
+    }
+
     const [data, total] = await Promise.all([
       SavedReport.find(filter)
         .populate('patient', 'fullName patientId age gender mobile')

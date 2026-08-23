@@ -1,31 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import { formatDateTimeAMPM } from '../../utils/dateFormatter';
 
+const PERIODS = [
+  { key: 'all',   label: 'All Time' },
+  { key: 'today', label: 'Today' },
+  { key: 'week',  label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+  { key: 'year',  label: 'This Year' },
+  { key: 'custom',label: 'Custom Range' },
+];
+
 export default function ReportHistory() {
   const navigate = useNavigate();
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [reports, setReports]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search,  setSearch]    = useState('');
+  const [page,    setPage]      = useState(1);
+  const [total,   setTotal]     = useState(0);
+  const [period,  setPeriod]    = useState('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate,   setToDate]   = useState('');
   const LIMIT = 20;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: LIMIT };
       if (search) params.q = search;
+      if (period && period !== 'all' && period !== 'custom') params.period = period;
+      if (period === 'custom') {
+        if (fromDate) params.fromDate = fromDate;
+        if (toDate)   params.toDate   = toDate;
+      }
       const r = await api.get('/saved-reports', { params });
       setReports(r.data?.data || []);
       setTotal(r.data?.total || 0);
     } catch { toast.error('Could not load reports'); }
     finally { setLoading(false); }
-  };
+  }, [page, search, period, fromDate, toDate]);
 
-  useEffect(() => { load(); }, [page, search]);
+  useEffect(() => { load(); }, [load]);
+
+  const handlePeriodChange = (p) => {
+    setPeriod(p);
+    setPage(1);
+  };
 
   const deleteReport = async (id) => {
     if (!window.confirm('Delete this report?')) return;
@@ -42,7 +64,7 @@ export default function ReportHistory() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Report History</h1>
-          <p className="text-sm text-slate-500 mt-0.5">All generated lab reports — {total} total</p>
+          <p className="text-sm text-slate-500 mt-0.5">All generated lab reports — {total} found</p>
         </div>
         <button onClick={() => navigate('/report-builder')}
           className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-800 shadow">
@@ -50,11 +72,63 @@ export default function ReportHistory() {
         </button>
       </div>
 
-      {/* Search */}
+      {/* Filters Bar */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+        {/* Search */}
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search by patient name..."
-          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-400 mb-3"
+        />
+
+        {/* Period Quick Filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filter by:</span>
+          {PERIODS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => handlePeriodChange(p.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                period === p.key
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Range Inputs */}
+        {period === 'custom' && (
+          <div className="flex gap-3 mt-3 items-center flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-500 font-medium">From:</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={e => { setFromDate(e.target.value); setPage(1); }}
+                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-500 font-medium">To:</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => { setToDate(e.target.value); setPage(1); }}
+                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+              />
+            </div>
+            <button
+              onClick={load}
+              className="px-4 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+            >
+              Apply
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -67,7 +141,14 @@ export default function ReportHistory() {
           <div className="text-center py-16 text-slate-400">
             <div className="text-4xl mb-3">📋</div>
             <p className="font-medium">No reports found</p>
-            <button onClick={() => navigate('/report-builder')} className="mt-3 text-blue-600 hover:underline text-sm">Create First Report →</button>
+            {period !== 'all' && (
+              <button onClick={() => handlePeriodChange('all')} className="mt-2 text-blue-600 hover:underline text-sm">
+                Show all reports →
+              </button>
+            )}
+            <button onClick={() => navigate('/report-builder')} className="block mx-auto mt-3 text-blue-600 hover:underline text-sm">
+              Create New Report →
+            </button>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -77,7 +158,7 @@ export default function ReportHistory() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase">Report No</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase">Tests</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase">Ref. Doctor</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase">Date</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase">Date & Time</th>
                 <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs uppercase">Actions</th>
               </tr>
             </thead>
