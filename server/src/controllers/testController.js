@@ -24,10 +24,12 @@ const getAll = async (req, res) => {
       { $match: { test: { $in: tests.map(t => t._id) }, isActive: true } },
       { $group: { _id: '$test', count: { $sum: 1 } } }
     ]);
-    const countMap = {};
-    paramCounts.forEach(p => { countMap[p._id.toString()] = p.count; });
-    const data = tests.map(t => ({ ...t.toObject(), parameterCount: countMap[t._id.toString()] || 0 }));
-    res.json({ success: true, data, total, page, limit, pages: Math.ceil(total / limit) });
+    const countMap = Object.fromEntries(paramCounts.map(p => [p._id.toString(), p.count]));
+    const data = tests.map(t => ({
+      ...t.toObject(),
+      parameterCount: countMap[t._id.toString()] || 0
+    }));
+    res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -45,7 +47,15 @@ const getCategories = async (req, res) => {
 const create = async (req, res) => {
   try {
     const test = await Test.create(req.body);
-    res.status(201).json({ success: true, data: test, message: 'Test created successfully' });
+    await createAuditLog({
+      user: req.user._id,
+      action: 'CREATE',
+      entity: 'Test',
+      entityId: test._id,
+      newValue: test.toObject(),
+      ip: req.ip
+    });
+    res.status(201).json({ success: true, data: test });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -64,9 +74,17 @@ const getById = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const test = await Test.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const test = await Test.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!test) return res.status(404).json({ success: false, message: 'Test not found' });
-    res.json({ success: true, data: test, message: 'Test updated' });
+    await createAuditLog({
+      user: req.user._id,
+      action: 'UPDATE',
+      entity: 'Test',
+      entityId: test._id,
+      newValue: test.toObject(),
+      ip: req.ip
+    });
+    res.json({ success: true, data: test });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -74,8 +92,8 @@ const update = async (req, res) => {
 
 const addParameter = async (req, res) => {
   try {
-    const param = await TestParameter.create({ ...req.body, test: req.params.id });
-    res.status(201).json({ success: true, data: param, message: 'Parameter added' });
+    const parameter = await TestParameter.create({ ...req.body, test: req.params.id });
+    res.status(201).json({ success: true, data: parameter });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -83,9 +101,9 @@ const addParameter = async (req, res) => {
 
 const updateParameter = async (req, res) => {
   try {
-    const param = await TestParameter.findByIdAndUpdate(req.params.paramId, req.body, { new: true });
-    if (!param) return res.status(404).json({ success: false, message: 'Parameter not found' });
-    res.json({ success: true, data: param });
+    const parameter = await TestParameter.findByIdAndUpdate(req.params.paramId, req.body, { new: true, runValidators: true });
+    if (!parameter) return res.status(404).json({ success: false, message: 'Parameter not found' });
+    res.json({ success: true, data: parameter });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -94,7 +112,7 @@ const updateParameter = async (req, res) => {
 const deleteParameter = async (req, res) => {
   try {
     await TestParameter.findByIdAndUpdate(req.params.paramId, { isActive: false });
-    res.json({ success: true, message: 'Parameter removed' });
+    res.json({ success: true, message: 'Parameter deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -116,15 +134,15 @@ const syncTemplate = async (req, res) => {
     const { rows = [], testName, category, comments } = req.body;
 
     let test;
-    if (testId && testId !== 'custom' && mongoose.Types.ObjectId.isValid(testId)) {
+    if (testId && testId !== 'custom' && testId !== 'undefined' && testId !== 'null' && mongoose.Types.ObjectId.isValid(testId)) {
       test = await Test.findById(testId);
     }
     if (!test && testName) {
       const code = testName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || `TST${Date.now().toString().slice(-4)}`;
-      test = await Test.findOne({ testCode: code });
+      test = await Test.findOne({ $or: [{ testName: { $regex: new RegExp(`^${testName.trim()}$`, 'i') } }, { testCode: code }] });
       if (!test) {
         test = await Test.create({
-          testName,
+          testName: testName.trim(),
           testCode: code,
           category: category || 'General',
           price: 200,
@@ -135,26 +153,26 @@ const syncTemplate = async (req, res) => {
     }
 
     if (!test) {
-      return res.status(400).json({ success: false, message: 'Invalid test identifier' });
+      return res.status(400).json({ success: false, message: 'Invalid test identifier or name' });
     }
 
-    // Deactivate previous parameters
-    await TestParameter.updateMany({ test: test._id }, { isActive: false });
+    // Delete previous parameters
+    await TestParameter.deleteMany({ test: test._id });
 
-    // Insert or activate new rows in template
+    // Insert new rows in template
     const newParams = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r.param && !r.paramName) continue;
-      const pName = r.param || r.paramName;
+      const pName = (r.param || r.paramName).trim();
       const pCode = (r.paramCode || pName).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || `P${i + 1}`;
 
       const param = await TestParameter.create({
         test: test._id,
         paramName: pName,
         paramCode: pCode,
-        unit: r.unit || '',
-        textRange: r.refRange || r.textRange || '',
+        unit: (r.unit || '').trim(),
+        textRange: (r.refRange || r.textRange || '').trim(),
         isSubheader: r.isSubheader || false,
         resultType: r.isSubheader ? 'subheader' : r.resultType || 'numeric',
         formula: r.formula || '',
@@ -172,6 +190,7 @@ const syncTemplate = async (req, res) => {
       data: { test, parameters: newParams }
     });
   } catch (error) {
+    console.error('syncTemplate error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

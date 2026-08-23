@@ -364,24 +364,24 @@ const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) =
 ));
 
 /* ═══════════════════════════════════════════════════════════════
-   PARAMETER ROW COMPONENT (Original Table Layout)
+   PARAMETER ROW COMPONENT (Clean High-Contrast Table Layout)
 ═══════════════════════════════════════════════════════════════ */
 const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
   // If row is a subheader (e.g. "DIFFERENTIAL WBC COUNT", "BILLIRUBIN")
   if (row.isSubheader) {
     return (
-      <tr style={{ background: '#dce8f5', borderBottom: '1px solid #b0c4d8' }} className="test-row-item">
-        <td colSpan={5} style={{ padding: '4px 8px' }}>
+      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #333' }} className="test-row-item">
+        <td colSpan={5} style={{ padding: '4px 8px', border: '1px solid #cbd5e1' }}>
           <Editable
             value={row.param}
             placeholder="CATEGORY / SUBHEADER TITLE"
-            style={{ fontWeight: '800', color: '#1e3a5f', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px', border: '1px dashed #93c5fd' }}
+            style={{ fontWeight: '800', color: '#111', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'param', value: e.target.value })
             }
           />
         </td>
-        <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center' }}>
+        <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center', border: '1px solid #cbd5e1' }}>
           <button
             onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
             style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}
@@ -404,12 +404,12 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
     <tr
       className={`test-row-item ${!hasValue ? 'row-unentered' : ''}`}
       style={{
-        background: isAbnormal ? '#fff5f5' : idx % 2 === 0 ? '#ffffff' : '#f9fafb',
-        borderBottom: '1px solid #b0c4d8',
+        background: isAbnormal ? '#fef2f2' : idx % 2 === 0 ? '#ffffff' : '#fcfcfc',
+        borderBottom: '1px solid #cbd5e1',
       }}
     >
       {/* Parameter Name */}
-      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#111', border: '1px solid #b0c4d8' }}>
+      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#111', border: '1px solid #cbd5e1' }}>
         <Editable
           value={row.param}
           placeholder="Parameter name"
@@ -420,14 +420,14 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
       </td>
 
       {/* Result */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', border: '1px solid #b0c4d8' }}>
+      <td style={{ padding: '4px 6px', textAlign: 'center', border: '1px solid #cbd5e1' }}>
         <Editable
           value={row.result}
           placeholder="—"
           style={{
             textAlign: 'center',
             fontWeight: isAbnormal ? 'bold' : '600',
-            color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#0f172a',
+            color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#111',
             width: '80px',
           }}
           onChange={(e) =>
@@ -437,7 +437,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
       </td>
 
       {/* Unit */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: '1px solid #b0c4d8' }}>
+      <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
         <Editable
           value={row.unit}
           placeholder="unit"
@@ -449,7 +449,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
       </td>
 
       {/* Reference Value */}
-      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#333', border: '1px solid #b0c4d8' }}>
+      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
         <Editable
           value={row.refRange}
           placeholder="e.g. 12 - 15"
@@ -460,7 +460,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
       </td>
 
       {/* Flag (H / L) */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: '1px solid #b0c4d8' }}>
+      <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: '1px solid #cbd5e1' }}>
         {flag || ''}
       </td>
 
@@ -479,7 +479,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx }) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   TEST SECTION COMPONENT (Original Blue Bar Layout)
+   TEST SECTION COMPONENT (Clean Black Heading & Border Layout)
 ═══════════════════════════════════════════════════════════════ */
 const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow }) => {
   const [savingTpl, setSavingTpl] = useState(false);
@@ -491,23 +491,25 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
   };
 
   return (
-    <div className="test-section-block" style={{ marginBottom: '10px' }}>
-      {/* Test Title Bar (Original Navy Blue Header) */}
-      <div style={{ background: '#1e3a5f', color: 'white', padding: '4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.5px' }}>{section.testName.toUpperCase()}</span>
+    <div className="test-section-block" style={{ marginBottom: '12px' }}>
+      {/* Test Title Bar — Clean Black Underline Heading for sharp B&W print */}
+      <div style={{ borderBottom: '2px solid #111', padding: '4px 2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '12.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#111' }}>
+          {section.testName.toUpperCase()}
+        </span>
         
         <div className="no-print" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             onClick={handleSaveTpl}
             disabled={savingTpl}
-            style={{ fontSize: '10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: '600' }}
+            style={{ fontSize: '10px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontWeight: '600' }}
             title="Save these parameters into the Master Test Template for future reports"
           >
             {savingTpl ? 'Saving...' : '💾 Save Template'}
           </button>
           <button
             onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
-            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
             title="Remove section"
           >
             ✕
@@ -515,10 +517,10 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
         </div>
       </div>
 
-      {/* Parameters Table (Exact Original Structure) */}
+      {/* Parameters Table (Clean High-Contrast Structure) */}
       <table className="test-data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ background: '#dce8f5', borderBottom: '1px solid #b0c4d8' }}>
+          <tr style={{ background: '#f8fafc', borderTop: '1px solid #111', borderBottom: '1px solid #111' }}>
             {[
               ['Parameter', '34%'],
               ['Result', '14%'],
@@ -532,12 +534,12 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
                 className={h === '' ? 'no-print' : ''}
                 style={{
                   padding: '4px 6px',
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  color: '#1e3a5f',
+                  fontSize: '10.5px',
+                  fontWeight: '800',
+                  color: '#111',
                   textAlign: h === 'Result' || h === 'Unit' || h === 'Flag' ? 'center' : 'left',
                   width: w,
-                  border: '1px solid #b0c4d8',
+                  border: '1px solid #cbd5e1',
                 }}
               >
                 {h}
@@ -553,7 +555,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
       </table>
 
       {/* Screen Add Row buttons */}
-      <div className="no-print" style={{ marginTop: '3px', display: 'flex', gap: '8px' }}>
+      <div className="no-print" style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
         <button
           onClick={() => onAddRow(section.id, false)}
           style={{ fontSize: '11px', color: '#1e3a5f', background: 'none', border: '1px dashed #1e3a5f', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
@@ -570,7 +572,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
 
       {/* Method / Comments / Interpretation Box if available */}
       {section.comments && (
-        <div style={{ marginTop: '6px', padding: '5px 8px', border: '1px solid #1e3a5f', borderRadius: '2px', fontSize: '9px', lineHeight: '1.35', color: '#1e293b' }}>
+        <div style={{ marginTop: '6px', padding: '5px 8px', border: '1px solid #666', borderRadius: '2px', fontSize: '9px', lineHeight: '1.35', color: '#111' }}>
           <div style={{ fontWeight: '700', marginBottom: '2px' }}>Interpretation / Comments:</div>
           <div style={{ whiteSpace: 'pre-line' }}>{section.comments}</div>
         </div>
@@ -1026,9 +1028,11 @@ export default function LabReportPage() {
       if (res.data?.success) {
         toast.success(`✅ Saved "${section.testName}" template! Next reports will automatically use these parameters.`);
         loadAllTests();
+      } else {
+        toast.error(res.data?.message || 'Failed to update test template');
       }
-    } catch {
-      toast.error('Failed to update test template');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to update test template');
     }
   }, [loadAllTests]);
 
