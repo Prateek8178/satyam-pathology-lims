@@ -1409,13 +1409,13 @@ export default function LabReportPage() {
             )}
           </div>
 
-          {/* Content Layer with Print Table Header/Footer Structure */}
-          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '275mm', justifyContent: 'space-between' }}>
-            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', display: 'flex', flexDirection: 'column', minHeight: '275mm', justifyContent: 'space-between' }}>
-              {/* THEAD: Fixed Header at the top of EVERY page */}
-              <thead style={{ width: '100%' }}>
-                <tr style={{ width: '100%', display: 'block' }}>
-                  <td style={{ border: 'none', padding: 0, width: '100%', display: 'block' }}>
+          {/* Content Layer with Native Print Table Header/Footer Structure */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+              {/* THEAD: Repeats on the TOP of EVERY page in print */}
+              <thead>
+                <tr>
+                  <td style={{ border: 'none', padding: 0 }}>
                     {state.showHeader && (
                       <LabHeader logoUrl={assets.logo} settings={assets.settings} />
                     )}
@@ -1434,10 +1434,10 @@ export default function LabReportPage() {
                 </tr>
               </thead>
 
-              {/* TBODY: Test Content & Result Tables */}
-              <tbody style={{ flex: 1, width: '100%', display: 'block' }}>
-                <tr style={{ width: '100%', display: 'block' }}>
-                  <td style={{ border: 'none', padding: 0, width: '100%', display: 'block' }}>
+              {/* TBODY: Test Content & Result Tables (Flows across pages) */}
+              <tbody>
+                <tr>
+                  <td style={{ border: 'none', padding: '6px 0' }}>
                     {state.sections.length === 0 ? (
                       <div className="no-print" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
                         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
@@ -1461,10 +1461,10 @@ export default function LabReportPage() {
                 </tr>
               </tbody>
 
-              {/* TFOOT: Fixed Footer at the bottom of EVERY page */}
-              <tfoot style={{ marginTop: 'auto', width: '100%', display: 'block' }}>
-                <tr style={{ width: '100%', display: 'block' }}>
-                  <td style={{ border: 'none', padding: 0, width: '100%', display: 'block' }}>
+              {/* TFOOT: Repeats on the BOTTOM of EVERY page in print */}
+              <tfoot>
+                <tr>
+                  <td style={{ border: 'none', padding: 0 }}>
                     {state.showHeader && (
                       <ReportFooter
                         meta={state.meta}
