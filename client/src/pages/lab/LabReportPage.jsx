@@ -716,19 +716,8 @@ const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
       </div>
 
       {/* Row 3 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 16px' }}>
-        <div>
-          <b>Address:</b> {[patient?.address?.street, patient?.address?.city, patient?.address?.state].filter(Boolean).join(', ') || '—'}
-        </div>
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          <b>Sample Type:</b>
-          <input
-            value={meta.sampleType}
-            onChange={(e) => upMeta('sampleType', e.target.value)}
-            placeholder="e.g. Serum / EDTA Blood"
-            style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', flex: 1, fontSize: '11px', outline: 'none' }}
-          />
-        </div>
+      <div>
+        <b>Address:</b> {[patient?.address?.street, patient?.address?.city, patient?.address?.state].filter(Boolean).join(', ') || '—'}
       </div>
     </div>
   );
@@ -930,7 +919,6 @@ export default function LabReportPage() {
           if (p) {
             setSelPatient(p);
             setPatSearch(p.fullName);
-            dispatch({ type: 'SET_META', payload: { refDoctor: p.referredByName || p.referringDoctor?.name || 'Self' } });
           }
         })
         .catch(() => {});
@@ -957,7 +945,6 @@ export default function LabReportPage() {
   const selectPatient = useCallback((p) => {
     setSelPatient(p);
     setShowPatDrop(false);
-    dispatch({ type: 'SET_META', payload: { refDoctor: p.referredByName || p.referringDoctor?.name || 'Self' } });
   }, []);
 
   // Add Test to Report (PRESERVES search text as per Rule #11!)
