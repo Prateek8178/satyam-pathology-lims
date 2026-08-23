@@ -403,8 +403,8 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
   if (row.isSubheader) {
     const span = 3 + (!hideUnit ? 1 : 0) + (!hideRef ? 1 : 0) + (!hideFlag ? 1 : 0);
     return (
-      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #333' }} className="test-row-item">
-        <td colSpan={span} style={{ padding: '4px 8px', border: '1px solid #cbd5e1' }}>
+      <tr style={{ borderBottom: '1px solid #ddd' }} className="test-row-item">
+        <td colSpan={span} style={{ padding: '4px 8px', border: 'none' }}>
           <Editable
             value={row.param}
             placeholder="CATEGORY / SUBHEADER TITLE"
@@ -414,7 +414,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
             }
           />
         </td>
-        <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center', border: '1px solid #cbd5e1' }}>
+        <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center', border: 'none' }}>
           <button
             onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
             style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}
@@ -437,12 +437,12 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
     <tr
       className={`test-row-item ${!hasValue ? 'row-unentered' : ''}`}
       style={{
-        background: isAbnormal ? '#fef2f2' : idx % 2 === 0 ? '#ffffff' : '#fcfcfc',
-        borderBottom: '1px solid #cbd5e1',
+        background: isAbnormal ? '#fef9f9' : 'transparent',
+        borderBottom: '1px solid #e2e8f0',
       }}
     >
       {/* Parameter Name */}
-      <td style={{ padding: '4px 6px', fontSize: '11px', color: '#111', border: '1px solid #cbd5e1' }}>
+      <td style={{ padding: '3px 6px', fontSize: '11px', color: '#111', border: 'none' }}>
         <Editable
           value={row.param}
           placeholder="Parameter name"
@@ -453,7 +453,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
       </td>
 
       {/* Result */}
-      <td style={{ padding: '4px 6px', textAlign: 'center', border: '1px solid #cbd5e1' }}>
+      <td style={{ padding: '3px 6px', textAlign: 'center', border: 'none' }}>
         <Editable
           value={row.result}
           placeholder="—"
@@ -471,7 +471,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
 
       {/* Unit — conditionally shown */}
       {!hideUnit && (
-        <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
+        <td style={{ padding: '3px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: 'none' }}>
           <Editable
             value={row.unit}
             placeholder="unit"
@@ -485,7 +485,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
 
       {/* Reference Range — conditionally shown */}
       {!hideRef && (
-        <td style={{ padding: '4px 6px', fontSize: '11px', color: '#333', border: '1px solid #cbd5e1' }}>
+        <td style={{ padding: '3px 6px', fontSize: '11px', color: '#333', border: 'none' }}>
           <Editable
             value={row.refRange}
             placeholder="e.g. 12 - 15"
@@ -498,13 +498,13 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
 
       {/* Flag (H / L) — conditionally shown */}
       {!hideFlag && (
-        <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: '1px solid #cbd5e1' }}>
+        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: 'none' }}>
           {flag || ''}
         </td>
       )}
 
       {/* Screen Remove Button */}
-      <td style={{ padding: '3px 4px', textAlign: 'center' }} className="no-print">
+      <td style={{ padding: '3px 4px', textAlign: 'center', border: 'none' }} className="no-print">
         <button
           onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
           style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px' }}
@@ -585,24 +585,32 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
             </button>
           ))}
 
-          {/* Print Only This Test */}
+          {/* Print Only This Test — With Header / Without Header */}
           {onPrintOnly && (
-            <button
-              onClick={() => onPrintOnly(section.id, true)}
-              title="Print only this test (hides all other tests)"
-              style={{
-                fontSize: '10px',
-                background: '#0369a1',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '3px 8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-              }}
-            >
-              🖨️ Print Only This
-            </button>
+            <span style={{ display: 'flex', gap: '4px' }}>
+              <button
+                onClick={() => onPrintOnly(section.id, true)}
+                title="Print only this test WITH digital header"
+                style={{
+                  fontSize: '10px', background: '#0369a1', color: 'white',
+                  border: 'none', borderRadius: '4px', padding: '3px 7px',
+                  cursor: 'pointer', fontWeight: '600',
+                }}
+              >
+                🖨️ With Header
+              </button>
+              <button
+                onClick={() => onPrintOnly(section.id, false)}
+                title="Print only this test WITHOUT header (for pre-printed letterhead)"
+                style={{
+                  fontSize: '10px', background: '#0f766e', color: 'white',
+                  border: 'none', borderRadius: '4px', padding: '3px 7px',
+                  cursor: 'pointer', fontWeight: '600',
+                }}
+              >
+                🖨️ Without Header
+              </button>
+            </span>
           )}
 
           <button
@@ -626,7 +634,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
       {/* Parameters Table */}
       <table className="test-data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ background: '#f8fafc', borderTop: '1px solid #111', borderBottom: '1px solid #111' }}>
+          <tr style={{ borderTop: '1.5px solid #111', borderBottom: '1px solid #aaa' }}>
             {headers.filter(h => !h.hide).map((h) => (
               <th
                 key={h.label}
@@ -638,7 +646,8 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
                   color: '#111',
                   textAlign: h.label === 'Result' || h.label === 'Unit' || h.label === 'Flag' ? 'center' : 'left',
                   width: h.width,
-                  border: '1px solid #cbd5e1',
+                  border: 'none',
+                  borderRight: h.label === 'Parameter' ? 'none' : 'none',
                 }}
               >
                 {h.label}
@@ -663,6 +672,8 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
           ))}
         </tbody>
       </table>
+      {/* Table bottom border */}
+      <div style={{ borderBottom: '1.5px solid #111', marginBottom: '6px' }} />
 
       {/* Screen Add Row buttons */}
       <div className="no-print" style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
