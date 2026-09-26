@@ -95,12 +95,20 @@ const PRINT_CSS = `
     /* Hide empty rows on print */
     .row-unentered { display: none !important; }
 
-    /* WITHOUT HEADER: spacer shows only in print to align with pre-printed letterhead */
+    /* WITHOUT HEADER: spacers align content with pre-printed letterhead */
+    /* Top spacer in thead → repeats on EVERY page automatically */
     .no-header-spacer { display: none; }
     body.print-no-header .no-header-spacer {
       display: block !important;
       height: 52mm !important;
     }
+    /* Bottom spacer in tfoot → repeats on EVERY page automatically */
+    .no-footer-spacer { display: none; }
+    body.print-no-header .no-footer-spacer {
+      display: block !important;
+      height: 30mm !important;
+    }
+    /* Hide digital footer + no extra bottom margin from fixed footer */
     body.print-no-header .page-footer-container { display: none !important; }
 
     /* Page break control */
@@ -1297,12 +1305,28 @@ export default function LabReportPage() {
       }
       dispatch({ type: 'SET_HEADER', val: withHeader });
       await saveReport();
-      // Add body class for without-header mode — activates top spacer CSS
-      if (!withHeader) {
+
+      // Inject correct @page margins for this print mode
+      // (CSS @page cannot be scoped by body class — must inject via JS)
+      const styleId = 'dynamic-print-page-style';
+      let styleEl = document.getElementById(styleId);
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        document.head.appendChild(styleEl);
+      }
+      if (withHeader) {
+        // WITH HEADER: 32mm bottom for fixed digital footer
+        styleEl.textContent = '@media print { @page { margin: 6mm 12mm 32mm 12mm !important; } }';
+      } else {
+        // WITHOUT HEADER: 4mm all sides — thead/tfoot spacers handle pre-printed paper alignment
+        styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
       }
+
       const cleanup = () => {
         document.body.classList.remove('print-no-header');
+        if (styleEl) styleEl.textContent = '';
         window.removeEventListener('afterprint', cleanup);
       };
       window.addEventListener('afterprint', cleanup);
@@ -1311,9 +1335,7 @@ export default function LabReportPage() {
     [selPatient, state, saveReport]
   );
 
-  // Print ONLY one test section
-  // Uses same body classes as handlePrint — produces IDENTICAL layout
-  // Only difference: printOnlyId state hides other test sections via print-section-hidden CSS
+  // Print ONLY one test section — IDENTICAL layout as handlePrint for same mode
   const handlePrintOnly = useCallback(
     async (sectionId, withHeader = true) => {
       if (!selPatient) { toast.error('Please select a patient'); return; }
@@ -1321,19 +1343,28 @@ export default function LabReportPage() {
       dispatch({ type: 'SET_HEADER', val: withHeader });
       await saveReport();
 
-      // WITHOUT HEADER: add same class as full "Print Without Header"
-      // This produces EXACTLY same layout as "Print All Without Header" but for one section
-      if (!withHeader) {
+      // Same @page injection as handlePrint
+      const styleId = 'dynamic-print-page-style';
+      let styleEl = document.getElementById(styleId);
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        document.head.appendChild(styleEl);
+      }
+      if (withHeader) {
+        styleEl.textContent = '@media print { @page { margin: 6mm 12mm 32mm 12mm !important; } }';
+      } else {
+        styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
       }
 
       // Set printOnlyId → triggers useEffect → fires window.print() after DOM paint
       setPrintOnlyId(sectionId);
 
-      // Cleanup after print dialog closes
       const onAfter = () => {
         setPrintOnlyId(null);
         document.body.classList.remove('print-no-header');
+        if (styleEl) styleEl.textContent = '';
         window.removeEventListener('afterprint', onAfter);
       };
       window.addEventListener('afterprint', onAfter);
@@ -1688,14 +1719,17 @@ export default function LabReportPage() {
               <tfoot>
                 <tr>
                   <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
+                    {/* WITH HEADER: digital footer fixed at bottom */}
                     {state.showHeader && (
                       <ReportFooter
                         meta={state.meta}
                         dispatch={dispatch}
                         signatureUrl={assets.signature}
                         settings={assets.settings}
-                        />
-                      )}
+                      />
+                    )}
+                    {/* WITHOUT HEADER: bottom spacer for pre-printed footer — repeats every page */}
+                    <div className="no-footer-spacer" style={{ height: '0px' }} />
                   </td>
                 </tr>
               </tfoot>
