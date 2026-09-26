@@ -21,48 +21,37 @@ const PRINT_CSS = `
   @media print {
     @page {
       size: A4 portrait;
-      margin: 8mm 12mm 28mm 12mm;
+      margin: 6mm 12mm 32mm 12mm;
     }
 
-    /* Hide everything on screen */
+    /* Hide everything, show only report root */
     body * { visibility: hidden !important; }
-
-    /* Show only the report root */
     #REPORT_PRINT_ROOT,
     #REPORT_PRINT_ROOT * { visibility: visible !important; }
 
     #REPORT_PRINT_ROOT {
       position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
+      top: 0 !important; left: 0 !important;
       width: 100% !important;
-      min-height: unset !important;
+      height: auto !important;
+      min-height: 0 !important;
       overflow: visible !important;
       background: white !important;
       box-shadow: none !important;
       border: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      max-width: none !important;
+      padding: 0 !important; margin: 0 !important;
       font-family: Arial, sans-serif !important;
       color: #111 !important;
     }
 
-    /* Standard CSS Print Table Header & Footer (Repeats on EVERY printed page!) */
+    /* CSS Print Table — header repeats top, footer repeats bottom every page */
     table.print-page-table {
       width: 100% !important;
       border-collapse: collapse !important;
       border: none !important;
     }
-
-    table.print-page-table > thead {
-      display: table-header-group !important;
-    }
-
-    table.print-page-table > tfoot {
-      display: table-footer-group !important;
-    }
-
+    table.print-page-table > thead { display: table-header-group !important; }
+    table.print-page-table > tfoot { display: table-footer-group !important; }
     table.print-page-table > thead > tr > td,
     table.print-page-table > tfoot > tr > td,
     table.print-page-table > tbody > tr > td {
@@ -70,18 +59,16 @@ const PRINT_CSS = `
       padding: 0 !important;
     }
 
-    /* Hide all interactive controls */
+    /* Interactive controls hidden */
     .no-print { display: none !important; visibility: hidden !important; }
-    /* Show print-only elements */
     .print-only { display: inline !important; visibility: visible !important; }
 
-    /* Inputs appear as plain text without borders */
+    /* All inputs render as plain text */
     input, select, textarea {
       border: none !important;
       background: transparent !important;
       outline: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
+      padding: 0 !important; margin: 0 !important;
       font-size: inherit !important;
       color: inherit !important;
       font-family: inherit !important;
@@ -91,80 +78,80 @@ const PRINT_CSS = `
       display: inline !important;
     }
 
-    /* Table borders for inner test data */
-    .test-data-table { border-collapse: collapse !important; width: 100% !important; }
-    .test-data-table td, .test-data-table th { border-color: #b0c4d8 !important; }
-
-    /* Hide empty unentered rows completely on print */
-    .row-unentered {
-      display: none !important;
-      visibility: hidden !important;
+    /* ── Parameter table — NO grid, NO row lines, only header lines ── */
+    .test-data-table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+    }
+    .test-data-table td,
+    .test-data-table th {
+      border: none !important;
+    }
+    .test-data-table thead tr th {
+      border-top: 1.5px solid #222 !important;
+      border-bottom: 1.5px solid #222 !important;
     }
 
-    /* Keep test sections intact */
+    /* Hide empty rows on print */
+    .row-unentered { display: none !important; }
+
+    /* WITHOUT HEADER: spacer shows only in print to align with pre-printed letterhead */
+    .no-header-spacer { display: none; }
+    body.print-no-header .no-header-spacer {
+      display: block !important;
+      height: 52mm !important;
+    }
+    body.print-no-header .page-footer-container { display: none !important; }
+
+    /* Page break control */
+    /* Each test section that comes after another = starts on new page */
+    .test-section-block + .test-section-block {
+      page-break-before: always !important;
+      break-before: page !important;
+    }
+
+    /* Keep each test section intact — don't cut in the middle */
     .test-section-block {
-      page-break-inside: auto !important;
-      break-inside: auto !important;
-      margin-bottom: 12px !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      margin-bottom: 0 !important;
     }
 
+    /* Individual rows also avoid cuts */
     .test-row-item {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
 
-    /* Watermark visible on all pages */
+    /* Watermark — position:absolute (NOT fixed) to avoid forcing extra pages */
     .report-watermark {
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
+      position: absolute !important;
+      top: 50% !important; left: 50% !important;
       transform: translate(-50%, -50%) !important;
       z-index: 0 !important;
       pointer-events: none !important;
-      opacity: 0.08 !important;
+      opacity: 0.07 !important;
     }
 
-    /* Fixed footer pinned at the absolute bottom */
+    /* Footer — FIXED at bottom of every printed page */
     .page-footer-container {
       position: fixed !important;
       bottom: 0 !important;
-      left: 12mm !important;
-      right: 12mm !important;
+      left: 0 !important;
+      right: 0 !important;
+      padding: 0 12mm !important;
       background: white !important;
       z-index: 9999 !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
 
-    /* Single-section print mode: hide all other test sections */
+    /* ── PRINT ONLY THIS ── */
     .print-section-hidden {
       display: none !important;
       visibility: hidden !important;
       height: 0 !important;
       overflow: hidden !important;
-    }
-
-    /* When body has print-only-mode class: override page layout for clean single-section print */
-    body.print-only-mode #REPORT_PRINT_ROOT {
-      position: relative !important;
-      min-height: unset !important;
-      height: auto !important;
-    }
-
-    body.print-only-mode table.print-page-table {
-      height: auto !important;
-    }
-
-    body.print-only-mode table.print-page-table > thead {
-      display: none !important;
-    }
-
-    body.print-only-mode table.print-page-table > tfoot {
-      display: none !important;
-    }
-
-    body.print-only-mode .report-watermark {
-      display: none !important;
     }
   }
 `;
@@ -428,7 +415,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
   if (row.isSubheader) {
     const span = 3 + (!hideUnit ? 1 : 0) + (!hideRef ? 1 : 0) + (!hideFlag ? 1 : 0);
     return (
-      <tr style={{ borderBottom: '1px solid #ddd' }} className="test-row-item">
+      <tr style={{ background: 'transparent' }} className="test-row-item">
         <td colSpan={span} style={{ padding: '4px 8px', border: 'none' }}>
           <Editable
             value={row.param}
@@ -462,8 +449,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
     <tr
       className={`test-row-item ${!hasValue ? 'row-unentered' : ''}`}
       style={{
-        background: isAbnormal ? '#fef9f9' : 'transparent',
-        borderBottom: '1px solid #e2e8f0',
+        background: 'transparent',
       }}
     >
       {/* Parameter Name */}
@@ -484,8 +470,8 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
           placeholder="—"
           style={{
             textAlign: 'center',
-            fontWeight: isAbnormal ? 'bold' : '600',
-            color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#111',
+            fontWeight: isAbnormal ? 'bold' : 'normal',
+            color: '#111',
             width: '80px',
           }}
           onChange={(e) =>
@@ -521,9 +507,9 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
         </td>
       )}
 
-      {/* Flag (H / L) — conditionally shown */}
+      {/* Flag (H / L) — bold black, no color */}
       {!hideFlag && (
-        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: isHigh ? '#dc2626' : isLow ? '#2563eb' : '#777', border: 'none' }}>
+        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: '#111', border: 'none' }}>
           {flag || ''}
         </td>
       )}
@@ -697,8 +683,8 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
           ))}
         </tbody>
       </table>
-      {/* Table bottom border */}
-      <div style={{ borderBottom: '1.5px solid #111', marginBottom: '6px' }} />
+      {/* Table bottom closing line */}
+      <div style={{ borderBottom: '1.5px solid #333', marginBottom: '8px' }} />
 
       {/* Screen Add Row buttons */}
       <div className="no-print" style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
@@ -792,6 +778,12 @@ const LabHeader = memo(({ logoUrl, settings }) => {
 const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
   const upMeta = useCallback((field, val) => dispatch({ type: 'SET_META', payload: { [field]: val } }), [dispatch]);
 
+  // Local editable patient overrides (name, age, gender, mobile can be corrected before print)
+  const [editName,   setEditName]   = useState(patient?.fullName || '');
+  const [editAge,    setEditAge]    = useState(patient?.age ? String(patient.age) : '');
+  const [editGender, setEditGender] = useState(patient?.gender || '');
+  const [editMobile, setEditMobile] = useState(patient?.mobile || '');
+
   const fmtTime = (t) => {
     if (!t) return '';
     const [h, min] = t.split(':').map(Number);
@@ -800,62 +792,89 @@ const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
     return `${String(hh).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
   };
 
+  const inputStyle = {
+    border: '1px solid #ccc', borderRadius: '3px',
+    padding: '1px 4px', fontSize: '11px', outline: 'none',
+    background: 'transparent', color: '#111',
+  };
+
   return (
     <div style={{ fontSize: '11.5px', borderBottom: '2px solid #1e3a5f', paddingBottom: '6px', marginBottom: '8px' }}>
       {/* Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px 16px', marginBottom: '3px' }}>
-        <div><b>Patient Name:</b> {patient?.fullName || '—'}</div>
-        <div>
-          <b>Age / Sex:</b> {patient?.age ? `${patient.age} Yrs` : '—'} /{' '}
-          <strong style={{ color: patient?.gender ? '#111' : '#dc2626' }}>
-            {patient?.gender || 'Missing (Required)'}
-          </strong>
+        {/* Patient Name — editable */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Patient Name:</b>
+          <span className="no-print">
+            <input value={editName} onChange={e => setEditName(e.target.value)}
+              style={{ ...inputStyle, width: '130px' }} />
+          </span>
+          <span className="print-only" style={{ display: 'none' }}>{editName || patient?.fullName || '—'}</span>
         </div>
+
+        {/* Age / Sex — editable */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Age / Sex:</b>
+          <span className="no-print" style={{ display: 'flex', gap: '3px' }}>
+            <input value={editAge} onChange={e => setEditAge(e.target.value)}
+              style={{ ...inputStyle, width: '45px' }} placeholder="Yrs" />
+            <select value={editGender} onChange={e => setEditGender(e.target.value)}
+              style={{ ...inputStyle, width: '70px' }}>
+              <option value="">—</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </span>
+          <span className="print-only" style={{ display: 'none' }}>
+            {editAge ? `${editAge} Yrs` : '—'} / {editGender || <span style={{ color: '#dc2626' }}>Missing</span>}
+          </span>
+        </div>
+
+        {/* Report No */}
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <b>Report No:</b>
-          <input
-            value={meta.reportNo}
-            onChange={(e) => upMeta('reportNo', e.target.value)}
-            style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', width: '130px', fontSize: '11px', outline: 'none' }}
-          />
+          <input value={meta.reportNo} onChange={(e) => upMeta('reportNo', e.target.value)}
+            style={{ ...inputStyle, width: '130px' }} />
         </div>
       </div>
 
       {/* Row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px 16px', marginBottom: '3px' }}>
+        {/* Ref. Doctor */}
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <b>Ref. Doctor:</b>
-          <input
-            value={meta.refDoctor}
-            onChange={(e) => upMeta('refDoctor', e.target.value)}
+          <input value={meta.refDoctor} onChange={(e) => upMeta('refDoctor', e.target.value)}
             placeholder="Doctor name"
-            style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', flex: 1, fontSize: '11px', outline: 'none' }}
-          />
-          <button
-            className="no-print"
+            style={{ ...inputStyle, flex: 1 }} />
+          <button className="no-print"
             onClick={() => upMeta('refDoctor', 'Self')}
-            style={{ fontSize: '9px', padding: '1px 5px', border: '1px solid #ccc', borderRadius: '3px', background: meta.refDoctor === 'Self' ? '#1e3a5f' : '#f3f4f6', color: meta.refDoctor === 'Self' ? 'white' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
-          >
+            style={{ fontSize: '9px', padding: '1px 5px', border: '1px solid #ccc', borderRadius: '3px',
+              background: meta.refDoctor === 'Self' ? '#1e3a5f' : '#f3f4f6',
+              color: meta.refDoctor === 'Self' ? 'white' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Self
           </button>
         </div>
-        <div><b>Mobile:</b> {patient?.mobile || '—'}</div>
-        {/* Date + Time */}
+
+        {/* Mobile — editable */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <b>Mobile:</b>
+          <span className="no-print">
+            <input value={editMobile} onChange={e => setEditMobile(e.target.value)}
+              style={{ ...inputStyle, width: '110px' }} />
+          </span>
+          <span className="print-only" style={{ display: 'none' }}>{editMobile || patient?.mobile || '—'}</span>
+        </div>
+
+        {/* Date & Time */}
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <b>Date &amp; Time:</b>
           <span className="no-print" style={{ display: 'flex', gap: '3px' }}>
-            <input
-              type="date"
-              value={meta.sampleDate}
-              onChange={(e) => upMeta('sampleDate', e.target.value)}
-              style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none' }}
-            />
-            <input
-              value={meta.sampleTime || ''}
-              onChange={(e) => upMeta('sampleTime', e.target.value)}
+            <input type="date" value={meta.sampleDate} onChange={(e) => upMeta('sampleDate', e.target.value)}
+              style={{ ...inputStyle }} />
+            <input value={meta.sampleTime || ''} onChange={(e) => upMeta('sampleTime', e.target.value)}
               placeholder="10:30 AM"
-              style={{ border: '1px solid #ccc', borderRadius: '3px', padding: '1px 4px', fontSize: '11px', outline: 'none', width: '78px' }}
-            />
+              style={{ ...inputStyle, width: '78px' }} />
           </span>
           <span className="print-only" style={{ display: 'none' }}>
             {fmtDate(meta.sampleDate)} {formatAMPM(meta.sampleTime)}
@@ -865,11 +884,13 @@ const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
 
       {/* Row 3 */}
       <div>
-        <b>Address:</b> {[patient?.address?.street, patient?.address?.city, patient?.address?.state].filter(Boolean).join(', ') || '—'}
+        <b>Address:</b>{' '}
+        {[patient?.address?.street, patient?.address?.city, patient?.address?.state].filter(Boolean).join(', ') || '—'}
       </div>
     </div>
   );
 });
+
 
 /* ═══════════════════════════════════════════════════════════════
    ORIGINAL REPORT FOOTER (Fixed at the bottom)
@@ -1276,26 +1297,43 @@ export default function LabReportPage() {
       }
       dispatch({ type: 'SET_HEADER', val: withHeader });
       await saveReport();
-      setTimeout(() => window.print(), 200);
+      // Add body class for without-header mode — activates top spacer CSS
+      if (!withHeader) {
+        document.body.classList.add('print-no-header');
+      }
+      const cleanup = () => {
+        document.body.classList.remove('print-no-header');
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      setTimeout(() => window.print(), 250);
     },
     [selPatient, state, saveReport]
   );
 
-  // Print ONLY one test section (hides all others during print)
-  // Uses body class + useEffect to guarantee DOM updates BEFORE window.print() fires
+  // Print ONLY one test section
+  // Uses same body classes as handlePrint — produces IDENTICAL layout
+  // Only difference: printOnlyId state hides other test sections via print-section-hidden CSS
   const handlePrintOnly = useCallback(
     async (sectionId, withHeader = true) => {
       if (!selPatient) { toast.error('Please select a patient'); return; }
       if (!selPatient.gender) { toast.error('Patient gender is required. Please edit patient to add gender.'); return; }
       dispatch({ type: 'SET_HEADER', val: withHeader });
       await saveReport();
-      // Add body class for CSS overrides, then set state — useEffect will fire print
-      document.body.classList.add('print-only-mode');
+
+      // WITHOUT HEADER: add same class as full "Print Without Header"
+      // This produces EXACTLY same layout as "Print All Without Header" but for one section
+      if (!withHeader) {
+        document.body.classList.add('print-no-header');
+      }
+
+      // Set printOnlyId → triggers useEffect → fires window.print() after DOM paint
       setPrintOnlyId(sectionId);
-      // Cleanup after print
+
+      // Cleanup after print dialog closes
       const onAfter = () => {
         setPrintOnlyId(null);
-        document.body.classList.remove('print-only-mode');
+        document.body.classList.remove('print-no-header');
         window.removeEventListener('afterprint', onAfter);
       };
       window.addEventListener('afterprint', onAfter);
@@ -1303,11 +1341,10 @@ export default function LabReportPage() {
     [selPatient, saveReport, dispatch]
   );
 
-  // Fire window.print() AFTER React has re-rendered with printOnlyId set
-  // useEffect runs after DOM paint — guarantees CSS classes are applied
+  // Fire window.print() AFTER React re-renders + browser paints hidden sections
+  // Double rAF guarantees DOM is fully updated before print dialog opens
   useEffect(() => {
     if (printOnlyId !== null) {
-      // Double-rAF: ensures browser has actually painted the hidden elements
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           window.print();
@@ -1570,9 +1607,6 @@ export default function LabReportPage() {
             position: 'relative',
             padding: '24px 30px',
             boxSizing: 'border-box',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
           }}
         >
           {/* Watermark Logo / Microscope — hidden when printing single test */}
@@ -1593,12 +1627,16 @@ export default function LabReportPage() {
           </div>
 
           {/* Content Layer with Native Print Table Header/Footer Structure */}
-          <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', flex: 1, height: '100%' }}>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
               {/* THEAD: Repeats on the TOP of EVERY page in print */}
               <thead>
                 <tr>
                   <td style={{ border: 'none', padding: 0 }}>
+                    {/* WITHOUT HEADER: spacer to push content below pre-printed letterhead header */}
+                    {!state.showHeader && (
+                      <div className="no-header-spacer" style={{ height: '0px' }} />
+                    )}
                     {state.showHeader && (
                       <LabHeader logoUrl={assets.logo} settings={assets.settings} />
                     )}
