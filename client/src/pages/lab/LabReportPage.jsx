@@ -21,7 +21,7 @@ const PRINT_CSS = `
   @media print {
     @page {
       size: A4 portrait;
-      margin: 6mm 12mm 32mm 12mm;
+      margin: 8mm 15mm 35mm 15mm;
     }
 
     /* Hide everything, show only report root */
@@ -86,10 +86,33 @@ const PRINT_CSS = `
     .test-data-table td,
     .test-data-table th {
       border: none !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
     }
     .test-data-table thead tr th {
-      border-top: 1.5px solid #222 !important;
-      border-bottom: 1.5px solid #222 !important;
+      border-bottom: 1px solid #777 !important;
+    }
+    /* Hide the extra bottom divider line below each section */
+    .section-bottom-line { display: none !important; }
+
+    /* Result td — in print: hide input (no wrap), show span (wraps) */
+    .result-cell input {
+      display: none !important;
+    }
+    .result-cell .print-only {
+      display: inline !important;
+      white-space: pre-wrap !important;
+      word-break: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+
+    /* Comment/Interpretation box — never cut across pages */
+    .section-comment-box {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      white-space: pre-wrap !important;
     }
 
     /* Hide empty rows on print */
@@ -112,33 +135,28 @@ const PRINT_CSS = `
     body.print-no-header .page-footer-container { display: none !important; }
 
     /* Page break control */
-    /* Each test section that comes after another = starts on new page */
-    .test-section-block + .test-section-block {
-      page-break-before: always !important;
-      break-before: page !important;
-    }
-
-    /* Keep each test section intact — don't cut in the middle */
+    /* Sections flow naturally — fill available space before going to next page */
     .test-section-block {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
-      margin-bottom: 0 !important;
+      margin-bottom: 12px !important;
     }
 
-    /* Individual rows also avoid cuts */
+    /* Individual rows avoid cuts */
     .test-row-item {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
 
-    /* Watermark — position:absolute (NOT fixed) to avoid forcing extra pages */
+    /* WATERMARK — fixed position in PRINT = appears centered on EVERY page */
     .report-watermark {
-      position: absolute !important;
-      top: 50% !important; left: 50% !important;
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
       transform: translate(-50%, -50%) !important;
       z-index: 0 !important;
       pointer-events: none !important;
-      opacity: 0.07 !important;
+      opacity: 0.12 !important;
     }
 
     /* Footer — FIXED at bottom of every printed page */
@@ -394,32 +412,49 @@ function reducer(state, action) {
 /* ═══════════════════════════════════════════════════════════════
    EDITABLE TABLE INPUT COMPONENT
 ═══════════════════════════════════════════════════════════════ */
-const Editable = memo(({ value, onChange, style, placeholder, type = 'text' }) => (
-  <input
-    type={type}
-    value={value ?? ''}
-    onChange={onChange}
-    placeholder={placeholder}
-    style={{
-      background: 'transparent',
-      border: '1px solid #ccc',
-      borderRadius: '3px',
-      padding: '2px 5px',
-      fontSize: '11.5px',
-      color: 'inherit',
-      width: '100%',
-      outline: 'none',
-      fontFamily: 'inherit',
-      ...style,
-    }}
-  />
-));
+const Editable = memo(({ value, onChange, style, placeholder, type = 'text', readOnly = false }) => {
+  if (readOnly) {
+    return (
+      <span style={{
+        fontSize: '11px',
+        color: 'inherit',
+        fontFamily: 'inherit',
+        display: 'inline-block',
+        width: '100%',
+        padding: '2px 5px',
+        ...style,
+      }}>
+        {value || <span style={{ color: '#aaa' }}>{placeholder || ''}</span>}
+      </span>
+    );
+  }
+  return (
+    <input
+      type={type}
+      value={value ?? ''}
+      onChange={onChange}
+      placeholder={placeholder}
+      style={{
+        background: 'transparent',
+        border: '1px solid #ccc',
+        borderRadius: '3px',
+        padding: '2px 5px',
+        fontSize: '11.5px',
+        color: 'inherit',
+        width: '100%',
+        outline: 'none',
+        fontFamily: 'inherit',
+        ...style,
+      }}
+    />
+  );
+});
 
 /* ═══════════════════════════════════════════════════════════════
    PARAMETER ROW COMPONENT (Clean High-Contrast Table Layout)
 ═══════════════════════════════════════════════════════════════ */
-const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, hideRef, hideFlag }) => {
-  // If row is a subheader (e.g. "DIFFERENTIAL WBC COUNT", "BILLIRUBIN")
+const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, hideRef, hideFlag, isSuperAdmin }) => {
+  // If row is a subheader (e.g. "DIFFERENTIAL WBC COUNT")
   if (row.isSubheader) {
     const span = 3 + (!hideUnit ? 1 : 0) + (!hideRef ? 1 : 0) + (!hideFlag ? 1 : 0);
     return (
@@ -428,21 +463,25 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
           <Editable
             value={row.param}
             placeholder="CATEGORY / SUBHEADER TITLE"
+            readOnly={!isSuperAdmin}
             style={{ fontWeight: '800', color: '#111', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'param', value: e.target.value })
             }
           />
         </td>
-        <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center', border: 'none' }}>
-          <button
-            onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
-            style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}
-            title="Remove subheader"
-          >
-            ×
-          </button>
-        </td>
+        {/* Remove subheader — SUPER ADMIN ONLY */}
+        {isSuperAdmin && (
+          <td className="no-print" style={{ padding: '3px 4px', textAlign: 'center', border: 'none' }}>
+            <button
+              onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
+              style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}
+              title="Remove subheader"
+            >
+              ×
+            </button>
+          </td>
+        )}
       </tr>
     );
   }
@@ -456,45 +495,64 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
   return (
     <tr
       className={`test-row-item ${!hasValue ? 'row-unentered' : ''}`}
-      style={{
-        background: 'transparent',
-      }}
+      style={{ background: 'transparent' }}
     >
-      {/* Parameter Name */}
+      {/* Parameter Name — read-only for technician */}
       <td style={{ padding: '3px 6px', fontSize: '11px', color: '#111', border: 'none' }}>
         <Editable
           value={row.param}
           placeholder="Parameter name"
+          readOnly={!isSuperAdmin}
           onChange={(e) =>
             dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'param', value: e.target.value })
           }
         />
       </td>
 
-      {/* Result */}
-      <td style={{ padding: '3px 6px', textAlign: 'center', border: 'none' }}>
+      {/* Result — ALWAYS editable (all roles) */}
+      <td className="result-cell" style={{ padding: '3px 6px', textAlign: 'center', fontSize: '11px', border: 'none' }}>
+        {/* Screen: editable input */}
         <Editable
           value={row.result}
           placeholder="—"
           style={{
             textAlign: 'center',
+            fontSize: '11px',
             fontWeight: isAbnormal ? 'bold' : 'normal',
             color: '#111',
-            width: '80px',
+            width: '100%',
+            minWidth: '60px',
           }}
           onChange={(e) =>
             dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'result', value: e.target.value })
           }
         />
+        {/* Print: span shows full text — inputs don't wrap, span does */}
+        <span
+          className="print-only"
+          style={{
+            display: 'none',
+            fontSize: '11px',
+            fontWeight: isAbnormal ? 'bold' : 'normal',
+            color: '#111',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+            whiteSpace: 'pre-wrap',
+            textAlign: 'center',
+          }}
+        >
+          {row.result || '—'}
+        </span>
       </td>
 
-      {/* Unit — conditionally shown */}
+      {/* Unit — read-only for technician */}
       {!hideUnit && (
         <td style={{ padding: '3px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: 'none' }}>
           <Editable
             value={row.unit}
             placeholder="unit"
-            style={{ textAlign: 'center', width: '65px' }}
+            readOnly={!isSuperAdmin}
+            style={{ textAlign: 'center', fontSize: '11px', width: '65px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'unit', value: e.target.value })
             }
@@ -502,12 +560,14 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
         </td>
       )}
 
-      {/* Reference Range — conditionally shown */}
+      {/* Reference Range — read-only for technician */}
       {!hideRef && (
         <td style={{ padding: '3px 6px', fontSize: '11px', color: '#333', border: 'none' }}>
           <Editable
             value={row.refRange}
             placeholder="e.g. 12 - 15"
+            readOnly={!isSuperAdmin}
+            style={{ fontSize: '11px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'refRange', value: e.target.value })
             }
@@ -515,23 +575,27 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
         </td>
       )}
 
-      {/* Flag (H / L) — bold black, no color */}
+      {/* Flag (H / L) */}
       {!hideFlag && (
-        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: '#111', border: 'none' }}>
+        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: isAbnormal ? 'bold' : 'normal', fontSize: '11px', color: '#111', border: 'none' }}>
           {flag || ''}
         </td>
       )}
 
-      {/* Screen Remove Button */}
-      <td style={{ padding: '3px 4px', textAlign: 'center', border: 'none' }} className="no-print">
-        <button
-          onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
-          style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px' }}
-          title="Delete row"
-        >
-          ×
-        </button>
-      </td>
+      {/* Remove Row button — SUPER ADMIN ONLY */}
+      {isSuperAdmin ? (
+        <td style={{ padding: '3px 4px', textAlign: 'center', border: 'none' }} className="no-print">
+          <button
+            onClick={() => dispatch({ type: 'REMOVE_ROW', sectionId, rowId: row.id })}
+            style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px' }}
+            title="Delete row"
+          >
+            ×
+          </button>
+        </td>
+      ) : (
+        <td className="no-print" style={{ padding: '3px 4px', border: 'none', width: '24px' }} />
+      )}
     </tr>
   );
 });
@@ -540,7 +604,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
    TEST SECTION COMPONENT (Clean Black Heading & Border Layout)
    Now with column visibility toggles: hide Unit / Ref Range / Flag
 ═══════════════════════════════════════════════════════════════ */
-const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow, printOnlyId, onPrintOnly }) => {
+const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAddRow, printOnlyId, onPrintOnly, isSuperAdmin }) => {
   const [savingTpl, setSavingTpl] = useState(false);
   const [hideUnit, setHideUnit]   = useState(false);
   const [hideRef,  setHideRef]    = useState(false);
@@ -572,15 +636,16 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
       className={`test-section-block${isPrintHidden ? ' print-section-hidden' : ''}`}
       style={{ marginBottom: '12px' }}
     >
-      {/* Test Title Bar — Clean Black Underline Heading */}
-      <div style={{ borderBottom: '2px solid #111', padding: '4px 2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Test Title Bar — lighter underline */}
+      <div style={{ borderBottom: '1.5px solid #555', padding: '4px 2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '12.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#111' }}>
           {section.testName.toUpperCase()}
         </span>
         
         <div className="no-print" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Column visibility toggles */}
-          {[
+
+          {/* Column visibility toggles — SUPER ADMIN ONLY */}
+          {isSuperAdmin && [
             { label: 'Unit', state: hideUnit, set: setHideUnit },
             { label: 'Ref.Range', state: hideRef, set: setHideRef },
             { label: 'Flag', state: hideFlag, set: setHideFlag },
@@ -604,7 +669,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
             </button>
           ))}
 
-          {/* Print Only This Test — With Header / Without Header */}
+          {/* Print Only This Test — visible to ALL roles */}
           {onPrintOnly && (
             <span style={{ display: 'flex', gap: '4px' }}>
               <button
@@ -632,28 +697,35 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
             </span>
           )}
 
-          <button
-            onClick={handleSaveTpl}
-            disabled={savingTpl}
-            style={{ fontSize: '10px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontWeight: '600' }}
-            title="Save these parameters into the Master Test Template for future reports"
-          >
-            {savingTpl ? 'Saving...' : '💾 Save Template'}
-          </button>
-          <button
-            onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
-            style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
-            title="Remove test section"
-          >
-            ✕
-          </button>
+          {/* Save Template — SUPER ADMIN ONLY */}
+          {isSuperAdmin && (
+            <button
+              onClick={handleSaveTpl}
+              disabled={savingTpl}
+              style={{ fontSize: '10px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontWeight: '600' }}
+              title="Save these parameters into the Master Test Template for future reports"
+            >
+              {savingTpl ? 'Saving...' : '💾 Save Template'}
+            </button>
+          )}
+
+          {/* Remove Section — SUPER ADMIN ONLY */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => dispatch({ type: 'REMOVE_SECTION', id: section.id })}
+              style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+              title="Remove test section"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
       {/* Parameters Table */}
       <table className="test-data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderTop: '1.5px solid #111', borderBottom: '1px solid #aaa' }}>
+          <tr style={{ background: 'transparent' }}>
             {headers.filter(h => !h.hide).map((h) => (
               <th
                 key={h.label}
@@ -687,34 +759,51 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
               hideUnit={hideUnit}
               hideRef={hideRef}
               hideFlag={hideFlag}
+              isSuperAdmin={isSuperAdmin}
             />
           ))}
         </tbody>
       </table>
-      {/* Table bottom closing line */}
-      <div style={{ borderBottom: '1.5px solid #333', marginBottom: '8px' }} />
+      {/* Table bottom closing line — hidden in print via .section-bottom-line CSS */}
+      <div className="section-bottom-line" style={{ borderBottom: '1px solid #bbb', marginBottom: '8px' }} />
 
-      {/* Screen Add Row buttons */}
-      <div className="no-print" style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
-        <button
-          onClick={() => onAddRow(section.id, false)}
-          style={{ fontSize: '11px', color: '#1e3a5f', background: 'none', border: '1px dashed #1e3a5f', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
-        >
-          + Add Row
-        </button>
-        <button
-          onClick={() => onAddRow(section.id, true)}
-          style={{ fontSize: '11px', color: '#0369a1', background: 'none', border: '1px dashed #0284c7', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
-        >
-          + Add Subheader
-        </button>
-      </div>
+      {/* Screen Add Row / Subheader buttons — SUPER ADMIN ONLY */}
+      {isSuperAdmin && (
+        <div className="no-print" style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => onAddRow(section.id, false)}
+            style={{ fontSize: '11px', color: '#1e3a5f', background: 'none', border: '1px dashed #1e3a5f', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
+          >
+            + Add Row
+          </button>
+          <button
+            onClick={() => onAddRow(section.id, true)}
+            style={{ fontSize: '11px', color: '#0369a1', background: 'none', border: '1px dashed #0284c7', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer' }}
+          >
+            + Add Subheader
+          </button>
+        </div>
+      )}
 
       {/* Method / Comments / Interpretation Box */}
       {section.comments && (
-        <div style={{ marginTop: '6px', padding: '5px 8px', border: '1px solid #666', borderRadius: '2px', fontSize: '9px', lineHeight: '1.35', color: '#111' }}>
-          <div style={{ fontWeight: '700', marginBottom: '2px' }}>Interpretation / Comments:</div>
-          <div style={{ whiteSpace: 'pre-line' }}>{section.comments}</div>
+        <div
+          className="section-comment-box"
+          style={{
+            marginTop: '6px',
+            padding: '6px 10px',
+            border: '1px solid #999',
+            borderRadius: '2px',
+            fontSize: '10px',
+            lineHeight: '1.5',
+            color: '#111',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          <div style={{ fontWeight: '700', marginBottom: '3px', fontSize: '10px' }}>Interpretation / Comments:</div>
+          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{section.comments}</div>
         </div>
       )}
     </div>
@@ -734,48 +823,52 @@ const LabHeader = memo(({ logoUrl, settings }) => {
 
   return (
     <div style={{ marginBottom: '6px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '8px' }}>
-        {/* Logo left — use uploaded image or SVG microscope */}
-        <div style={{ flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '8px' }}>
+
+        {/* Logo — LEFT side, RED */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {logoUrl ? (
-            <img src={logoUrl} alt="Lab Logo" style={{ width: '80px', height: '100px', objectFit: 'contain' }} />
+            <img src={logoUrl} alt="Lab Logo" style={{ width: '75px', height: '90px', objectFit: 'contain' }} />
           ) : (
-            <MicroscopeSVG size={72} color="#111" />
+            <MicroscopeSVG size={68} color="#c62828" />
           )}
         </div>
 
-        {/* Clinic details center */}
-        <div style={{ flex: 1, textAlign: 'center', lineHeight: '1.2' }}>
+        {/* All text — CENTER aligned in the remaining space, exactly like photo */}
+        <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{
-            fontSize: '30px',
+            fontSize: '38px',
             fontWeight: '900',
             color: '#c62828',
             fontFamily: '"Arial Black", "Arial", sans-serif',
             letterSpacing: '1px',
             textTransform: 'uppercase',
+            lineHeight: '1.1',
+            whiteSpace: 'nowrap',
+            overflow: 'visible',
           }}>
             {name}
           </div>
           <div style={{
-            fontSize: '13.5px',
-            fontWeight: '800',
+            fontSize: '13px',
+            fontWeight: '700',
             color: '#1a237e',
-            marginTop: '2px',
+            marginTop: '4px',
             letterSpacing: '0.5px',
           }}>
             {tagline}
           </div>
-          <div style={{ fontSize: '11px', color: '#1a237e', marginTop: '4px', fontWeight: '500' }}>
+          <div style={{ fontSize: '10.5px', color: '#1a237e', marginTop: '3px', fontWeight: '500' }}>
             {address}
           </div>
-          <div style={{ fontSize: '11px', color: '#1a237e', marginTop: '2px' }}>
-            {phone} {email ? `| ${email}` : ''}
+          <div style={{ fontSize: '10.5px', color: '#1a237e', marginTop: '2px' }}>
+            {phone}{email ? ` | ${email}` : ''}
           </div>
         </div>
       </div>
 
-      {/* Top separator — double line */}
-      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '8px' }} />
+      {/* Header separator — single bold line */}
+      <div style={{ borderBottom: '2px solid #111', marginBottom: '8px' }} />
     </div>
   );
 });
@@ -807,7 +900,7 @@ const PatientInfoSection = memo(({ patient, meta, dispatch }) => {
   };
 
   return (
-    <div style={{ fontSize: '11.5px', borderBottom: '2px solid #1e3a5f', paddingBottom: '6px', marginBottom: '8px' }}>
+    <div style={{ fontSize: '11.5px', borderBottom: '1px solid #777', paddingBottom: '6px', marginBottom: '8px' }}>
       {/* Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px 16px', marginBottom: '3px' }}>
         {/* Patient Name — editable */}
@@ -912,8 +1005,8 @@ const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
 
   return (
     <div className="page-footer-container" style={{ marginTop: '24px', fontSize: '10px' }}>
-      {/* Top separator — same double line style as header */}
-      <div style={{ borderTop: '1px solid #111', borderBottom: '3px solid #111', height: '4px', marginBottom: '10px' }} />
+      {/* Footer separator — single line */}
+      <div style={{ borderTop: '2px solid #111', marginBottom: '10px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px' }}>
         {/* Left: Prepared By + Notes */}
         <div style={{ flex: 1 }}>
@@ -1304,10 +1397,9 @@ export default function LabReportPage() {
         return;
       }
       dispatch({ type: 'SET_HEADER', val: withHeader });
-      await saveReport();
+      // NOTE: No saveReport() here — saves only happen via explicit Save button
 
       // Inject correct @page margins for this print mode
-      // (CSS @page cannot be scoped by body class — must inject via JS)
       const styleId = 'dynamic-print-page-style';
       let styleEl = document.getElementById(styleId);
       if (!styleEl) {
@@ -1316,10 +1408,8 @@ export default function LabReportPage() {
         document.head.appendChild(styleEl);
       }
       if (withHeader) {
-        // WITH HEADER: 32mm bottom for fixed digital footer
-        styleEl.textContent = '@media print { @page { margin: 6mm 12mm 32mm 12mm !important; } }';
+        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 35mm 15mm !important; } }';
       } else {
-        // WITHOUT HEADER: 4mm all sides — thead/tfoot spacers handle pre-printed paper alignment
         styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
       }
@@ -1332,7 +1422,7 @@ export default function LabReportPage() {
       window.addEventListener('afterprint', cleanup);
       setTimeout(() => window.print(), 250);
     },
-    [selPatient, state, saveReport]
+    [selPatient, state]
   );
 
   // Print ONLY one test section — IDENTICAL layout as handlePrint for same mode
@@ -1341,7 +1431,7 @@ export default function LabReportPage() {
       if (!selPatient) { toast.error('Please select a patient'); return; }
       if (!selPatient.gender) { toast.error('Patient gender is required. Please edit patient to add gender.'); return; }
       dispatch({ type: 'SET_HEADER', val: withHeader });
-      await saveReport();
+      // NOTE: No saveReport() here — saves only via explicit Save button
 
       // Same @page injection as handlePrint
       const styleId = 'dynamic-print-page-style';
@@ -1352,7 +1442,7 @@ export default function LabReportPage() {
         document.head.appendChild(styleEl);
       }
       if (withHeader) {
-        styleEl.textContent = '@media print { @page { margin: 6mm 12mm 32mm 12mm !important; } }';
+        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 35mm 15mm !important; } }';
       } else {
         styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
@@ -1369,7 +1459,7 @@ export default function LabReportPage() {
       };
       window.addEventListener('afterprint', onAfter);
     },
-    [selPatient, saveReport, dispatch]
+    [selPatient, dispatch]
   );
 
   // Fire window.print() AFTER React re-renders + browser paints hidden sections
@@ -1640,25 +1730,28 @@ export default function LabReportPage() {
             boxSizing: 'border-box',
           }}
         >
-          {/* Watermark Logo / Microscope — hidden when printing single test */}
-          <div className={`report-watermark${printOnlyId !== null ? ' print-section-hidden' : ''}`} style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none',
-            zIndex: 0,
-            opacity: 0.08,
-          }}>
+          {/* WATERMARK — position:absolute on screen (document center), position:fixed in print (every page) */}
+          <div
+            className={`report-watermark${printOnlyId !== null ? ' print-section-hidden' : ''}`}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              zIndex: 0,
+              opacity: 0.10,
+            }}
+          >
             {assets.logo ? (
-              <img src={assets.logo} alt="Watermark" style={{ width: '280px', height: '280px', objectFit: 'contain', filter: 'grayscale(100%)' }} />
+              <img src={assets.logo} alt="" style={{ width: '320px', height: '320px', objectFit: 'contain' }} />
             ) : (
-              <MicroscopeSVG size={220} color="#111" opacity={1} />
+              <MicroscopeSVG size={300} color="#c62828" opacity={1} />
             )}
           </div>
 
-          {/* Content Layer with Native Print Table Header/Footer Structure */}
-          <div style={{ position: 'relative', zIndex: 1 }}>
+          {/* Content Layer — transparent background so watermark shows through */}
+          <div style={{ position: 'relative', zIndex: 1, background: 'transparent' }}>
             <table className="print-page-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
               {/* THEAD: Repeats on the TOP of EVERY page in print */}
               <thead>
@@ -1708,6 +1801,7 @@ export default function LabReportPage() {
                           onAddRow={handleAddRow}
                           printOnlyId={printOnlyId}
                           onPrintOnly={handlePrintOnly}
+                          isSuperAdmin={user?.role === 'SUPER_ADMIN' || user?.role === 'LAB_ADMIN'}
                         />
                       ))
                     )}
