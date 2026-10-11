@@ -21,7 +21,7 @@ const PRINT_CSS = `
   @media print {
     @page {
       size: A4 portrait;
-      margin: 8mm 15mm 35mm 15mm;
+      margin: 8mm 15mm 10mm 15mm;
     }
 
     /* Hide everything, show only report root */
@@ -159,15 +159,12 @@ const PRINT_CSS = `
       opacity: 0.12 !important;
     }
 
-    /* Footer — FIXED at bottom of every printed page */
+    /* Footer — inside tfoot, repeats on every page via CSS print table */
+    /* NO position:fixed — tfoot handles footer placement natively */
     .page-footer-container {
-      position: fixed !important;
-      bottom: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      padding: 0 12mm !important;
+      display: block !important;
+      width: 100% !important;
       background: white !important;
-      z-index: 9999 !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
@@ -1004,7 +1001,7 @@ const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
   const notesText = s.notes || s.disclaimer || `Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.`;
 
   return (
-    <div className="page-footer-container" style={{ marginTop: '24px', fontSize: '10px' }}>
+    <div className="page-footer-container" style={{ fontSize: '10px' }}>
       {/* Footer separator — single line */}
       <div style={{ borderTop: '2px solid #111', marginBottom: '10px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px' }}>
@@ -1408,7 +1405,7 @@ export default function LabReportPage() {
         document.head.appendChild(styleEl);
       }
       if (withHeader) {
-        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 35mm 15mm !important; } }';
+        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 10mm 15mm !important; } }';
       } else {
         styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
@@ -1442,7 +1439,7 @@ export default function LabReportPage() {
         document.head.appendChild(styleEl);
       }
       if (withHeader) {
-        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 35mm 15mm !important; } }';
+        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 10mm 15mm !important; } }';
       } else {
         styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
