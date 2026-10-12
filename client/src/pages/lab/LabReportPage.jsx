@@ -24,7 +24,7 @@ const PRINT_CSS = `
       margin: 8mm 15mm 8mm 15mm;
     }
 
-    /* Hide everything, show only report root */
+    /* Hide everything except report */
     body * { visibility: hidden !important; }
     #REPORT_PRINT_ROOT,
     #REPORT_PRINT_ROOT * { visibility: visible !important; }
@@ -44,19 +44,74 @@ const PRINT_CSS = `
       color: #111 !important;
     }
 
-    /* CSS Print Table — header repeats top, footer repeats bottom every page */
+    /* ═══════════════════════════════════════════════════
+       OUTER PRINT TABLE — header top, footer bottom, every page
+       thead = table-header-group → repeats at TOP of every page
+       tfoot = table-footer-group → repeats at BOTTOM of every page
+       tbody = content fills the middle
+    ═══════════════════════════════════════════════════ */
     table.print-page-table {
       width: 100% !important;
       border-collapse: collapse !important;
       border: none !important;
     }
-    table.print-page-table > thead { display: table-header-group !important; }
-    table.print-page-table > tfoot { display: table-footer-group !important; }
+    table.print-page-table > thead {
+      display: table-header-group !important;
+    }
+    table.print-page-table > tfoot {
+      display: table-footer-group !important;
+    }
     table.print-page-table > thead > tr > td,
     table.print-page-table > tfoot > tr > td,
     table.print-page-table > tbody > tr > td {
       border: none !important;
       padding: 0 !important;
+    }
+    /* tfoot td reserves fixed space = footer height so tbody never overlaps footer */
+    table.print-page-table > tfoot > tr > td {
+      height: 32mm !important;
+      min-height: 32mm !important;
+      vertical-align: bottom !important;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       FOOTER — position:fixed at ABSOLUTE BOTTOM of every page
+       tfoot td (32mm) reserves space → content stops above
+       Fixed footer renders ON TOP of that reserved space
+    ═══════════════════════════════════════════════════ */
+    .page-footer-container {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      padding: 4px 15mm 6px 15mm !important;
+      background: white !important;
+      z-index: 9999 !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       INNER TEST TABLE — column headers must NOT repeat
+       The outer thead handles page headers (lab name, patient)
+       Inner table headers (Parameter|Result|Unit|Ref|Flag)
+       should appear ONCE per test section, NOT on every page
+    ═══════════════════════════════════════════════════ */
+    .test-data-table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+    }
+    .test-data-table thead {
+      display: table-row-group !important; /* Prevents column header repeating on every page */
+    }
+    .test-data-table td,
+    .test-data-table th {
+      border: none !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+    .test-data-table thead tr th {
+      border-bottom: 1px solid #777 !important;
     }
 
     /* Interactive controls hidden */
@@ -78,27 +133,8 @@ const PRINT_CSS = `
       display: inline !important;
     }
 
-    /* ── Parameter table — NO grid, NO row lines, only header lines ── */
-    .test-data-table {
-      border-collapse: collapse !important;
-      width: 100% !important;
-    }
-    .test-data-table td,
-    .test-data-table th {
-      border: none !important;
-      word-wrap: break-word !important;
-      overflow-wrap: break-word !important;
-    }
-    .test-data-table thead tr th {
-      border-bottom: 1px solid #777 !important;
-    }
-    /* Hide the extra bottom divider line below each section */
-    .section-bottom-line { display: none !important; }
-
-    /* Result td — in print: hide input (no wrap), show span (wraps) */
-    .result-cell input {
-      display: none !important;
-    }
+    /* Result td — in print: hide input (never wraps), show span (wraps) */
+    .result-cell input { display: none !important; }
     .result-cell .print-only {
       display: inline !important;
       white-space: pre-wrap !important;
@@ -106,7 +142,7 @@ const PRINT_CSS = `
       overflow-wrap: break-word !important;
     }
 
-    /* Comment/Interpretation box — never cut across pages */
+    /* Comment box — never cut across pages */
     .section-comment-box {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -115,40 +151,47 @@ const PRINT_CSS = `
       white-space: pre-wrap !important;
     }
 
-    /* Hide empty rows on print */
+    /* Hide empty unentered rows */
     .row-unentered { display: none !important; }
 
-    /* WITHOUT HEADER: spacers align content with pre-printed letterhead */
-    /* Top spacer in thead → repeats on EVERY page automatically */
+    /* Hide section bottom divider line */
+    .section-bottom-line { display: none !important; }
+
+    /* WITHOUT HEADER mode — spacers for pre-printed letterhead */
     .no-header-spacer { display: none; }
     body.print-no-header .no-header-spacer {
       display: block !important;
       height: 52mm !important;
     }
-    /* Bottom spacer in tfoot → repeats on EVERY page automatically */
     .no-footer-spacer { display: none; }
     body.print-no-header .no-footer-spacer {
       display: block !important;
       height: 30mm !important;
     }
-    /* Hide digital footer + no extra bottom margin from fixed footer */
     body.print-no-header .page-footer-container { display: none !important; }
+    /* Without header: reduce tfoot height to pre-printed footer space */
+    body.print-no-header table.print-page-table > tfoot > tr > td {
+      height: 30mm !important;
+      min-height: 30mm !important;
+    }
 
-    /* Page break control */
-    /* Sections flow naturally — fill available space before going to next page */
+    /* ═══════════════════════════════════════════════════
+       PAGE BREAK CONTROL
+       Sections fill current page before going to next.
+       If a section fits in remaining space → same page.
+       If not → next page. No forced breaks.
+    ═══════════════════════════════════════════════════ */
     .test-section-block {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
-      margin-bottom: 12px !important;
+      margin-bottom: 10px !important;
     }
-
-    /* Individual rows avoid cuts */
     .test-row-item {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
 
-    /* WATERMARK — fixed position in PRINT = appears centered on EVERY page */
+    /* WATERMARK — fixed, centered on every page */
     .report-watermark {
       position: fixed !important;
       top: 50% !important;
@@ -159,25 +202,7 @@ const PRINT_CSS = `
       opacity: 0.12 !important;
     }
 
-    /* Footer — FIXED at bottom of every printed page */
-    .page-footer-container {
-      position: fixed !important;
-      bottom: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      padding: 0 15mm !important;
-      background: white !important;
-      z-index: 9999 !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
-
-    /* Content area gets padding-bottom = footer height so content never goes behind footer */
-    .report-content-area {
-      padding-bottom: 35mm !important;
-    }
-
-    /* ── PRINT ONLY THIS ── */
+    /* PRINT ONLY THIS — hide other sections */
     .print-section-hidden {
       display: none !important;
       visibility: hidden !important;
@@ -1787,7 +1812,7 @@ export default function LabReportPage() {
               {/* TBODY: Test Content & Result Tables (Flows across pages) */}
               <tbody>
                 <tr>
-                  <td className="report-content-area" style={{ border: 'none', padding: '6px 0', verticalAlign: 'top', height: '100%' }}>
+                  <td style={{ border: 'none', padding: '6px 0', verticalAlign: 'top' }}>
                     {state.sections.length === 0 ? (
                       <div className="no-print" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
                         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
