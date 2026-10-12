@@ -21,7 +21,7 @@ const PRINT_CSS = `
   @media print {
     @page {
       size: A4 portrait;
-      margin: 8mm 15mm 10mm 15mm;
+      margin: 8mm 15mm 8mm 15mm;
     }
 
     /* Hide everything, show only report root */
@@ -159,14 +159,22 @@ const PRINT_CSS = `
       opacity: 0.12 !important;
     }
 
-    /* Footer — inside tfoot, repeats on every page via CSS print table */
-    /* NO position:fixed — tfoot handles footer placement natively */
+    /* Footer — FIXED at bottom of every printed page */
     .page-footer-container {
-      display: block !important;
-      width: 100% !important;
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      padding: 0 15mm !important;
       background: white !important;
+      z-index: 9999 !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
+    }
+
+    /* Content area gets padding-bottom = footer height so content never goes behind footer */
+    .report-content-area {
+      padding-bottom: 35mm !important;
     }
 
     /* ── PRINT ONLY THIS ── */
@@ -1001,7 +1009,7 @@ const ReportFooter = memo(({ meta, dispatch, signatureUrl, settings }) => {
   const notesText = s.notes || s.disclaimer || `Results of investigation depends upon test methods and instrument used. Interpretation may vary from lab to lab, our Pathology will not assume any liability for any controversy in interpretation or report. Claims if any are subject to Jabalpur (M.P.) Jurisdiction.`;
 
   return (
-    <div className="page-footer-container" style={{ fontSize: '10px' }}>
+    <div className="page-footer-container" style={{ marginTop: '8px', fontSize: '10px' }}>
       {/* Footer separator — single line */}
       <div style={{ borderTop: '2px solid #111', marginBottom: '10px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px' }}>
@@ -1405,7 +1413,7 @@ export default function LabReportPage() {
         document.head.appendChild(styleEl);
       }
       if (withHeader) {
-        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 10mm 15mm !important; } }';
+        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 8mm 15mm !important; } }';
       } else {
         styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
@@ -1439,7 +1447,7 @@ export default function LabReportPage() {
         document.head.appendChild(styleEl);
       }
       if (withHeader) {
-        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 10mm 15mm !important; } }';
+        styleEl.textContent = '@media print { @page { margin: 8mm 15mm 8mm 15mm !important; } }';
       } else {
         styleEl.textContent = '@media print { @page { margin: 4mm 6mm 4mm 6mm !important; } }';
         document.body.classList.add('print-no-header');
@@ -1779,7 +1787,7 @@ export default function LabReportPage() {
               {/* TBODY: Test Content & Result Tables (Flows across pages) */}
               <tbody>
                 <tr>
-                  <td style={{ border: 'none', padding: '6px 0', verticalAlign: 'top', height: '100%' }}>
+                  <td className="report-content-area" style={{ border: 'none', padding: '6px 0', verticalAlign: 'top', height: '100%' }}>
                     {state.sections.length === 0 ? (
                       <div className="no-print" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
                         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
