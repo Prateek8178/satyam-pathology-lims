@@ -469,7 +469,7 @@ const Editable = memo(({ value, onChange, style, placeholder, type = 'text', rea
         border: '1px solid #ccc',
         borderRadius: '3px',
         padding: '2px 5px',
-        fontSize: '11.5px',
+        fontSize: '12.5px',
         color: 'inherit',
         width: '100%',
         outline: 'none',
@@ -494,7 +494,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
             value={row.param}
             placeholder="CATEGORY / SUBHEADER TITLE"
             readOnly={!isSuperAdmin}
-            style={{ fontWeight: '800', color: '#111', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px' }}
+            style={{ fontWeight: '800', color: '#111', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '12px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'param', value: e.target.value })
             }
@@ -528,7 +528,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
       style={{ background: 'transparent' }}
     >
       {/* Parameter Name — read-only for technician */}
-      <td style={{ padding: '3px 6px', fontSize: '11px', color: '#111', border: 'none' }}>
+      <td style={{ padding: '3px 6px', fontSize: '12px', color: '#111', border: 'none' }}>
         <Editable
           value={row.param}
           placeholder="Parameter name"
@@ -540,14 +540,14 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
       </td>
 
       {/* Result — ALWAYS editable (all roles) */}
-      <td className="result-cell" style={{ padding: '3px 6px', textAlign: 'center', fontSize: '11px', border: 'none' }}>
+      <td className="result-cell" style={{ padding: '3px 6px', textAlign: 'center', fontSize: '12px', border: 'none' }}>
         {/* Screen: editable input */}
         <Editable
           value={row.result}
           placeholder="—"
           style={{
             textAlign: 'center',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: isAbnormal ? 'bold' : 'normal',
             color: '#111',
             width: '100%',
@@ -562,7 +562,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
           className="print-only"
           style={{
             display: 'none',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: isAbnormal ? 'bold' : 'normal',
             color: '#111',
             wordBreak: 'break-word',
@@ -577,12 +577,12 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
 
       {/* Unit — read-only for technician */}
       {!hideUnit && (
-        <td style={{ padding: '3px 6px', textAlign: 'center', fontSize: '11px', color: '#333', border: 'none' }}>
+        <td style={{ padding: '3px 6px', textAlign: 'center', fontSize: '12px', color: '#333', border: 'none' }}>
           <Editable
             value={row.unit}
             placeholder="unit"
             readOnly={!isSuperAdmin}
-            style={{ textAlign: 'center', fontSize: '11px', width: '65px' }}
+            style={{ textAlign: 'center', fontSize: '12px', width: '65px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'unit', value: e.target.value })
             }
@@ -592,12 +592,12 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
 
       {/* Reference Range — read-only for technician */}
       {!hideRef && (
-        <td style={{ padding: '3px 6px', fontSize: '11px', color: '#333', border: 'none' }}>
+        <td style={{ padding: '3px 6px', fontSize: '12px', color: '#333', border: 'none' }}>
           <Editable
             value={row.refRange}
             placeholder="e.g. 12 - 15"
             readOnly={!isSuperAdmin}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '12px' }}
             onChange={(e) =>
               dispatch({ type: 'UPDATE_ROW', sectionId, rowId: row.id, field: 'refRange', value: e.target.value })
             }
@@ -607,7 +607,7 @@ const ParamRow = memo(({ row, sectionId, gender, age, dispatch, idx, hideUnit, h
 
       {/* Flag (H / L) */}
       {!hideFlag && (
-        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: isAbnormal ? 'bold' : 'normal', fontSize: '11px', color: '#111', border: 'none' }}>
+        <td style={{ padding: '3px 6px', textAlign: 'center', fontWeight: isAbnormal ? 'bold' : 'normal', fontSize: '12px', color: '#111', border: 'none' }}>
           {flag || ''}
         </td>
       )}
@@ -668,7 +668,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
     >
       {/* Test Title Bar — lighter underline */}
       <div style={{ borderBottom: '1.5px solid #555', padding: '4px 2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '12.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#111' }}>
+        <span style={{ fontSize: '13.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#111' }}>
           {section.testName.toUpperCase()}
         </span>
         
@@ -762,7 +762,7 @@ const TestSection = memo(({ section, gender, age, dispatch, onSaveTemplate, onAd
                 className={h.noPrint ? 'no-print' : ''}
                 style={{
                   padding: '4px 6px',
-                  fontSize: '10.5px',
+                  fontSize: '11.5px',
                   fontWeight: '800',
                   color: '#111',
                   textAlign: h.label === 'Result' || h.label === 'Unit' || h.label === 'Flag' ? 'center' : 'left',
